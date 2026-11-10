@@ -1,0 +1,44 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Optional headphone/car-music mode only: pause for calls without taking media focus. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Any Android device: Wi-Fi tablets, Chromebooks and TVs are not excluded by the optional call check or touch input. -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent><package android:name="com.google.android.projection.gearhead" /><intent><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="https" android:host="novelai.net" /></intent><intent><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="https" /></intent></queries>
+    <application android:name=".RoadleafApp" android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" android:icon="@drawable/ic_roadleaf" android:label="Roadleaf" android:theme="@style/Theme.Roadleaf" android:usesCleartextTraffic="false" android:supportsRtl="true">
+        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
+        <meta-data android:name="com.google.android.gms.car.notification.SmallIcon" android:resource="@drawable/ic_playback" />
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+            <intent-filter><action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
+        </activity>
+        <!-- Android Accessibility settings can open setup; it accepts no external capture commands. -->
+        <activity android:name=".NovelAiBrowserActivity" android:exported="true" />
+        <service android:name=".browser.NovelAiBrowserService" android:label="@string/novelai_browser_label" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/novelai_browser_service" />
+        </service>
+        <activity android:name=".WebReaderActivity" android:exported="true" android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+        <receiver android:name="androidx.media3.session.MediaButtonReceiver" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MEDIA_BUTTON" /></intent-filter>
+        </receiver>
+        <!-- Media3 requires discovery by system media controllers. onConnect rejects untrusted external controllers; custom commands are app-only. -->
+        <service android:name=".playback.NarrationService" android:foregroundServiceType="mediaPlayback" android:exported="true" tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

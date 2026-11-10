@@ -1,0 +1,9 @@
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/novelai_browser_description"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewFocused|typeViewTextChanged"
+    android:accessibilityFeedbackType="feedbackSpoken"
+    android:accessibilityFlags="flagReportViewIds"
+    android:canRetrieveWindowContent="true"
+    android:notificationTimeout="250"
+    android:packageNames="com.android.chrome,com.chrome.beta,com.chrome.dev,com.chrome.canary,org.mozilla.firefox,org.mozilla.firefox_beta,org.mozilla.fenix,org.mozilla.focus,com.microsoft.emmx,com.brave.browser,com.sec.android.app.sbrowser,com.opera.browser,com.opera.mini.native,com.opera.gx,com.duckduckgo.mobile.android,com.vivaldi.browser,com.kiwibrowser.browser,com.yandex.browser,org.torproject.torbrowser,com.ecosia.android,com.mi.globalbrowser,com.UCMobile.intl,com.naver.whale,org.mozilla.fennec_fdroid,us.spotco.fennec_dos,org.cromite.cromite"
+    android:settingsActivity="app.roadleaf.NovelAiBrowserActivity" />

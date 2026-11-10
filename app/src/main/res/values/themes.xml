@@ -1,0 +1,10 @@
+<resources>
+    <style name="Base.Theme.Roadleaf" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:colorAccent">#9FD9B1</item>
+        <item name="android:windowBackground">#101916</item>
+        <item name="android:statusBarColor">#101916</item>
+        <item name="android:navigationBarColor">#101916</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <style name="Theme.Roadleaf" parent="Base.Theme.Roadleaf" />
+</resources>

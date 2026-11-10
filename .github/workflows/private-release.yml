@@ -1,0 +1,64 @@
+name: Signed APK (repository owner only)
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: 'Increasing positive Android version code'
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  signed-apk:
+    # Only the owner can start a signed build, only from main, behind the protected environment.
+    if: github.ref == 'refs/heads/main' && github.actor == github.repository_owner
+    environment: private-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+      SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+      SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+      VERSION_CODE: ${{ inputs.version_code }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+        with:
+          cache-disabled: true
+      - name: Validate inputs and restore signing key
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION_CODE" =~ ^[1-9][0-9]{0,8}$ ]] || { echo 'Use a positive version code up to 9 digits'; exit 1; }
+          test -n "$KEYSTORE_BASE64" && test -n "$SIGNING_STORE_PASSWORD" && test -n "$SIGNING_KEY_ALIAS" && test -n "$SIGNING_KEY_PASSWORD"
+          umask 077
+          store_file="$RUNNER_TEMP/roadleaf-release.jks"
+          printf 'SIGNING_STORE_FILE=%s\n' "$store_file" >> "$GITHUB_ENV"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$store_file"
+      - run: chmod +x gradlew
+      - run: ./gradlew testDebugUnitTest lintRelease assembleRelease --no-daemon
+      - name: Verify APK signature and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
+          sha256sum app/build/outputs/apk/release/app-release.apk > app/build/outputs/apk/release/app-release.apk.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: roadleaf-private-signed-${{ inputs.version_code }}
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/*.sha256
+          retention-days: 7
+      - name: Remove ephemeral signing material
+        if: always()
+        shell: bash
+        run: rm -f -- "$RUNNER_TEMP/roadleaf-release.jks"

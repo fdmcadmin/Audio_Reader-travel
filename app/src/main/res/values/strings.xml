@@ -1,0 +1,4 @@
+<resources>
+    <string name="novelai_browser_label">Roadleaf — browser reader</string>
+    <string name="novelai_browser_description">Optional local narration of text you choose in your own browser (Chrome, Firefox, Edge, Samsung Internet, Brave, Opera, DuckDuckGo and others). A small Roadleaf bubble waits at the edge of the screen; tap it for the controls, or drag it onto ✕ to close it until you next open Roadleaf. On a NovelAI story, tap inside the story box and use From top or Resume. On any other page, use Read page; only that page is read, and only when you tap. Your sign-ins stay in your browser. Passwords, form fields, menus and other apps are never read. It does not type, tap links, generate text, import cookies or upload anything; narration stays on your phone. Disable this service any time to stop browser reading.</string>
+</resources>
