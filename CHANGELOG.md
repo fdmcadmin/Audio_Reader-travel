@@ -2,6 +2,10 @@
 
 All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
+## 0.3.25
+
+- **Output test report:** the report's status line now names the outputs the app uses, phone and Android Auto: "Phone/Android Auto speaker separation: requires a parked listening check."
+
 ## 0.3.24
 
 - **Choose your browser for web books:** the first time you open a web book (Continue reading, Add website book or Read webpage), Roadleaf asks where: its own reader or an installed browser such as Chrome. It remembers the answer; change it in Sources → Read in your own browser → Where web books open.
