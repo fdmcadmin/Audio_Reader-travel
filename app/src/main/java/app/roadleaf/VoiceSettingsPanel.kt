@@ -65,7 +65,7 @@ internal data class Choice(val id: String, val title: String, val detail: String
         val voices = if (catalogMatches) catalog!!.voices else emptyList()
         val locales = (voices.map { it.localeTag } + draft.localeTag).distinct().sortedBy { Locale.forLanguageTag(it).displayName }
         ChoicePicker("Language / accent", draft.localeTag, locales.map { Choice(it, Locale.forLanguageTag(it).displayName) }, !busy) { draft = draft.copy(localeTag = it, voiceName = "") }
-        val voiceChoices = listOf(Choice("", "Automatic offline voice", "Prefers a matching accent and quick preparation")) + voices.filter { it.localeTag == draft.localeTag }.map {
+        val voiceChoices = listOf(Choice("", "Automatic offline voice", "Prefers a matching accent and quick preparation")) + voices.filter { it.localeTag == draft.localeTag || (draft.enginePackage == NativeKokoro.ENGINE_ID && it.localeTag.startsWith("en-", ignoreCase = true)) }.map {
             val quality = if (it.quality >= 400) "Higher quality" else if (it.quality <= 200) "Basic quality" else "Standard quality"
             val friendly = voiceLabel(it.name, catalog?.enginePackage.orEmpty())
             Choice(it.name, friendly, "$quality • ${Locale.forLanguageTag(it.localeTag).displayName}")
