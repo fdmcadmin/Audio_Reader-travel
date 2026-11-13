@@ -25,10 +25,19 @@ data class AdaptiveVoices(val engine: String = "", val narrator: String = "", va
     }
     companion object {
         fun from(catalog: SpeechCatalog, settings: ListeningSettings): AdaptiveVoices {
-            val narrator = settings.voiceName.ifBlank { catalog.voices.filter { it.localeTag.equals(settings.localeTag, true) }
+            val compatible = catalog.voices.filter {
+                it.localeTag.equals(settings.localeTag, true) ||
+                    (catalog.enginePackage == NativeKokoro.ENGINE_ID &&
+                        it.localeTag.startsWith("en-", ignoreCase = true) && settings.localeTag.startsWith("en-", ignoreCase = true))
+            }
+            val narrator = settings.voiceName.ifBlank { compatible
                 .sortedWith(compareBy<OfflineVoiceOption> { it.latency }.thenByDescending { it.quality }.thenBy { it.name }).firstOrNull()?.name.orEmpty() }
+            val voices = compatible.map { it.name }
+            if (catalog.enginePackage == NativeKokoro.ENGINE_ID) return AdaptiveVoices(
+                catalog.enginePackage, narrator,
+                voices.filter { NativeKokoro.speakerName(it)?.let { name -> name.startsWith("am_") || name.startsWith("bm_") } == true },
+                voices.filter { NativeKokoro.speakerName(it)?.let { name -> name.startsWith("af_") || name.startsWith("bf_") } == true })
             if (catalog.enginePackage != "com.brahmadeo.supertonic.tts") return AdaptiveVoices(catalog.enginePackage, narrator)
-            val voices = catalog.voices.filter { it.localeTag.equals(settings.localeTag, true) }.map { it.name }
             return AdaptiveVoices(catalog.enginePackage, narrator,
                 voices.filter { Regex("en-supertonic-M[0-9]+").matches(it) }.sorted(),
                 voices.filter { Regex("en-supertonic-F[0-9]+").matches(it) }.sorted())
