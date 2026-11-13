@@ -39,9 +39,9 @@ android {
             initWith(getByName("debug"))
             // Separate package ID to avoid conflicting with a locally signed Roadleaf debug APK.
             // This is a disposable preview: it cannot read or overwrite the existing app data.
-            applicationIdSuffix = ".scenecompanion"
-            versionNameSuffix = "-scene-preview"
-            manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Scene Preview"
+            applicationIdSuffix = ".storypreview"
+            versionNameSuffix = "-story-preview"
+            manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Story Preview"
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
