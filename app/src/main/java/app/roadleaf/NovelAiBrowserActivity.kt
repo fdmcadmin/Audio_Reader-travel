@@ -126,12 +126,42 @@ class NovelAiBrowserActivity : ComponentActivity() {
             if (selected.isNotBlank()) item { Row { Checkbox(replace, { replace = it }); Text("Allow one replacement of this saved story", Modifier.padding(top = 12.dp)) }
                 if (replace) Text("Use only after confirming this is the same story with earlier edits. Its voice choices stay; the saved paragraph is relocated when possible.", style = MaterialTheme.typography.bodySmall)
             }
-            item { Button(onClick = {
-                selected = selected.ifBlank { UUID.randomUUID().toString() }
-                app.browserSession.value = BrowserReadingSession(UUID.randomUUID().toString(), selected, title.trim(), browser, follow, replace).also { app.browserReader.remember(it) }
-                replace = false
-                app.browserStatus.value = status.copy(message = "Story selected: $title. Return to this manuscript in NovelAI, tap inside its editor, then tap From top on the Roadleaf bubble to save it under its own name. Other stories and casts remain separate.")
-            }, enabled = status.connected && title.isNotBlank(), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Use this named story for reading") }
+            item {
+                // Save the named book record first. This must not depend on Accessibility.
+                Button(onClick = {
+                    val name = title.trim()
+                    val existing = books.firstOrNull { it.id == selected }
+                    val id = existing?.id ?: UUID.randomUUID().toString()
+                    lifecycleScope.launch {
+                        try {
+                            if (existing == null) app.dao.insertBook(
+                                Book(id, name, "Personal NovelAI story", BrowserStory.SOURCE, "https://novelai.net/stories"))
+                            selected = id
+                            title = name
+                            if (browser.isNotBlank()) {
+                                app.browserSession.value = BrowserReadingSession(
+                                    UUID.randomUUID().toString(), id, name, browser, follow, replace)
+                                    .also { app.browserReader.remember(it) }
+                            }
+                            app.browserReader.showNovelAi(true)
+                            replace = false
+                            val current = app.browserStatus.value
+                            app.browserStatus.value = current.copy(message = when {
+                                !current.connected -> "Saved '$name' separately. Import its Lorebook under Voice > Characters. To read from NovelAI, first enable this Roadleaf preview's browser reader in Android Accessibility."
+                                browser.isBlank() -> "Saved '$name' separately. Choose a supported browser before reading NovelAI."
+                                else -> "Saved '$name'. Open its manuscript in your selected browser, tap the editor, then tap From top on the Roadleaf bubble."
+                            })
+                        } catch (error: Exception) {
+                            app.browserStatus.value = app.browserStatus.value.copy(
+                                message = "Could not save the story: " + (error.message ?: "unknown error"))
+                        }
+                    }
+                }, enabled = title.isNotBlank(), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                    Text(if (books.any { it.id == selected }) "Select this saved story for reading" else "Save named NovelAI story")
+                }
+                if (!status.connected) Text("You can save its name and Lorebook now. To capture text, enable Roadleaf Scene Preview's Accessibility browser reader.", style = MaterialTheme.typography.bodySmall)
+                if (books.any { it.id == selected }) Text("Saved to Roadleaf Library as an independent manuscript with its own character voices.", style = MaterialTheme.typography.bodySmall)
+            }
                 webApps.forEach { installed -> OutlinedButton(onClick = {
                     app.browserSession.value = BrowserReadingSession(UUID.randomUUID().toString(), "free-${UUID.randomUUID()}", BrowserStory.UNSAVED_TITLE, "com.android.chrome", follow,
                         webAppPackage = installed.packageName, webAppLaunchMs = SystemClock.elapsedRealtime(), temporary = true, pinnedBook = false)
