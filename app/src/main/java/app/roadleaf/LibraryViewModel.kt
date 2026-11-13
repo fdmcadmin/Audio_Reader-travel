@@ -44,7 +44,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     fun import(uri: Uri) = task { val book = app.importer.importUri(uri); message.value = "Imported ${book.title}" }
     fun linkExpedition(uri: Uri) = task {
         val result = app.importer.linkExpeditionFolder(uri)
-        message.value = if (result.added == 0) "Expedition folder linked. Validated Chapter 1 JSON will appear here when ready."
+        message.value = if (result.added == 0) "Expedition folder linked. Add its original Chapter 1 TXT or validated chapter JSON to begin."
             else "Expedition linked • ${result.added} chapter${if (result.added == 1) "" else "s"} ready offline"
     }
     fun refreshExpedition() = task {

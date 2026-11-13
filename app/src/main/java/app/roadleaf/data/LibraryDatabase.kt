@@ -15,11 +15,11 @@ data class Chapter(@PrimaryKey val id: String, val bookId: String, val ordinal: 
 @Entity data class WebBook(@PrimaryKey val bookUrl: String, val title: String, val chapterUrl: String, val chapterTitle: String, val updatedAt: Long = System.currentTimeMillis())
 
 @Dao interface LibraryDao {
-    @Query("SELECT * FROM Book ORDER BY addedAt DESC") fun books(): Flow<List<Book>>
+    @Query("SELECT * FROM Book ORDER BY addedAt ASC, title ASC") fun books(): Flow<List<Book>>
     @Query("SELECT * FROM Book WHERE id=:id") suspend fun book(id: String): Book?
     @Query("SELECT * FROM Book WHERE sourceId=:sourceId AND sourceUrl=:sourceUrl LIMIT 1") suspend fun bookBySource(sourceId: String, sourceUrl: String): Book?
-    @Query("SELECT * FROM Book ORDER BY addedAt DESC LIMIT :limit OFFSET :offset") suspend fun booksPage(limit: Int, offset: Int): List<Book>
-    @Query("SELECT * FROM Book WHERE title LIKE :query OR author LIKE :query ORDER BY addedAt DESC LIMIT :limit OFFSET :offset") suspend fun searchBooks(query: String, limit: Int, offset: Int): List<Book>
+    @Query("SELECT * FROM Book ORDER BY addedAt ASC, title ASC LIMIT :limit OFFSET :offset") suspend fun booksPage(limit: Int, offset: Int): List<Book>
+    @Query("SELECT * FROM Book WHERE title LIKE :query OR author LIKE :query ORDER BY addedAt ASC, title ASC LIMIT :limit OFFSET :offset") suspend fun searchBooks(query: String, limit: Int, offset: Int): List<Book>
     @Query("SELECT * FROM Chapter WHERE bookId=:bookId ORDER BY ordinal") suspend fun chapters(bookId: String): List<Chapter>
     @Query("SELECT * FROM Chapter WHERE id=:id") suspend fun chapter(id: String): Chapter?
     @Insert suspend fun insertBook(book: Book)
