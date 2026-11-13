@@ -39,9 +39,9 @@ android {
             initWith(getByName("debug"))
             // Separate package ID to avoid conflicting with a locally signed Roadleaf debug APK.
             // This is a disposable preview: it cannot read or overwrite the existing app data.
-            applicationIdSuffix = ".storypreview"
-            versionNameSuffix = "-story-preview"
-            manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Story Preview"
+            applicationIdSuffix = ".kokoropreview"
+            versionNameSuffix = "-kokoro-preview"
+            manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Kokoro Preview"
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
@@ -71,6 +71,9 @@ dependencies {
     implementation("androidx.media3:media3-session:1.6.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jsoup:jsoup:1.18.3")
+    // Pinned official sherpa-onnx AAR. See scripts/fetch-sherpa-aar.sh to install locally.
+    implementation(files("libs/sherpa-onnx-2.0.1.aar"))
+    implementation("org.apache.commons:commons-compress:1.27.1")
     testImplementation("junit:junit:4.13.2")
 }
 

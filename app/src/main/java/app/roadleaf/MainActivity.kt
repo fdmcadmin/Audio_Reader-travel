@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
         var showSourceHelp by remember { mutableStateOf(false) }
         var voiceCatalog by remember { mutableStateOf<SpeechCatalog?>(null) }
         var voicesBusy by remember { mutableStateOf(false) }
+        var kokoroImportBusy by remember { mutableStateOf(false) }
         var voiceRequest by remember { mutableIntStateOf(0) }
         var browserAction by remember { mutableStateOf<SourceAction.Browser?>(null) }
         var bookToDelete by remember { mutableStateOf<Book?>(null) }
@@ -118,6 +119,23 @@ class MainActivity : ComponentActivity() {
         val learnedRevision by vm.app.learnedCasts.changes.collectAsStateWithLifecycle()
         val castBooks = books.map { CastBookChoice(it.id, if (it.sourceId == BrowserStory.SOURCE) "NovelAI story · ${it.title}" else it.title) } + webBooks.filter { WebBookLinks.resolve(it.chapterUrl)?.readable == true }.map { CastBookChoice(it.bookUrl, it.title, it.chapterUrl) }
         val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::import) }
+        val kokoroArchivePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null && !kokoroImportBusy) {
+                kokoroImportBusy = true
+                vm.message.value = "Installing Kokoro's offline voices from this archive. Keep Roadleaf open until the model finishes importing."
+                vm.task {
+                    try {
+                        val result = KokoroModelImport.install(this@MainActivity, uri)
+                        voiceCatalog = null
+                        vm.message.value = result
+                    } catch (error: Exception) {
+                        vm.message.value = "Kokoro import failed: " + (error.message ?: "invalid or incomplete model archive")
+                    } finally {
+                        kokoroImportBusy = false
+                    }
+                }
+            }
+        }
         fun openBrowser(url: String) { runCatching { startActivity(Intent(Intent.ACTION_VIEW, url.toUri())); vm.rememberWebsite(url) }.onFailure { vm.message.value = "No browser is available." } }
         fun openWebBook(url: String, resume: Boolean = false) {
             startActivity(Intent(this@MainActivity, WebReaderActivity::class.java).putExtra("url", url)
@@ -197,7 +215,10 @@ class MainActivity : ComponentActivity() {
                 val imported = CastFiles.read(source, base)
                 // Delegate installed voices from the selected speech engine and accent.
                 val catalog = voiceCatalog?.takeIf { settings.enginePackage.isBlank() || it.enginePackage == settings.enginePackage }
-                val installed = catalog?.voices?.filter { it.localeTag.equals(settings.localeTag, true) }?.map { it.name }.orEmpty()
+                val installed = catalog?.voices?.filter {
+                    it.localeTag.equals(settings.localeTag, true) ||
+                        (catalog.enginePackage == NativeKokoro.ENGINE_ID && it.localeTag.startsWith("en-", ignoreCase = true))
+                }?.map { it.name }.orEmpty()
                 val delegated = VoiceDelegation.assign(imported.cast, installed, imported.cast.narratorVoice.ifBlank { settings.voiceName })
                 vm.app.casts.save(book, delegated.cast)
                 send(NarrationService.APPLY_CAST, Bundle().apply { putString("book", book) })
@@ -468,7 +489,10 @@ class MainActivity : ComponentActivity() {
                         if (voiceSection == 0) item { VoiceSettingsPanel(settings, voiceCatalog, voicesBusy, controller != null, ::refreshVoices,
                             onApply = { vm.saveSettings(it); send(NarrationService.APPLY_SETTINGS); vm.message.value = "Narrator settings saved" },
                             onPreview = { value, text -> vm.saveSettings(value); send(NarrationService.PREVIEW, Bundle().apply { putString("text", text) }) },
-                            onAndroidSettings = ::voiceSettings, onMoreVoices = { showVoiceSources = true }) }
+                            onAndroidSettings = ::voiceSettings, onMoreVoices = { showVoiceSources = true },
+                            onImportKokoro = { kokoroArchivePicker.launch(arrayOf("*/*")) },
+                            onDownloadKokoro = { openLink(NativeKokoro.MODEL_URL) },
+                            kokoroInstalled = NativeKokoro.installed(this@MainActivity), kokoroImportBusy = kokoroImportBusy) }
                         if (voiceSection == 1) item {
                             val cast = remember(castBook, castRevision) { vm.app.casts.get(castBook) }
                             val learned = remember(castBook, learnedRevision) { vm.app.learnedCasts.get(castBook) }
