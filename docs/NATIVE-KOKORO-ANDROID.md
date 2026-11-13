@@ -52,6 +52,6 @@ Model source: https://huggingface.co/csukuangfj/kokoro-int8-multi-lang-v1_0
 
 The combined Story Preview has loaded the official model and generated distinct
 Bella, Puck and George audio on a Pixel 10 Pro XL through the production speech
-path. See [the verification record and remaining limits](STORY-PREVIEW-0.3.28.md).
+path. See [the verification record and remaining limits](STORY-PREVIEW-0.3.29.md).
 Long-session playback, battery behavior and subjective listening quality still
 need separate checks.

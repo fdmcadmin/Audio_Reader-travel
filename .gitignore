@@ -18,4 +18,6 @@ app/libs/*.aar
 build-validation.log
 browser-probe-build.log
 final-label-build.log
+packaged-jni-build.log
+jni-contract-check.log
 !app/src/test/resources/*.epub

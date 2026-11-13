@@ -33,7 +33,7 @@ jobs:
             -o app/libs/sherpa-onnx-2.0.1.aar
           echo "a8d09d1d32f3eb8520482c6d3d43fae674681c5b050385967c70a3c2c9bf0ee7  app/libs/sherpa-onnx-2.0.1.aar" | sha256sum -c -
       - run: chmod +x gradlew
-      - run: ./gradlew testDebugUnitTest lintDebug lintCompact assembleCompact assembleDebugAndroidTest --no-daemon
+      - run: ./gradlew testDebugUnitTest lintDebug lintCompact assembleCompact verifyCompactJniContract assembleDebugAndroidTest --no-daemon
       - name: Verify test APKs and write checksums
         shell: bash
         run: |

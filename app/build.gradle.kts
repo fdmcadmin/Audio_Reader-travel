@@ -11,8 +11,8 @@ android {
         applicationId = "app.roadleaf"
         minSdk = 26
         targetSdk = 35
-        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 31
-        versionName = "0.3.28"
+        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 32
+        versionName = "0.3.29"
         manifestPlaceholders["roadleafAppLabel"] = "Roadleaf"
         manifestPlaceholders["roadleafBrowserLabel"] = "Roadleaf browser reader"
         testInstrumentationRunner = "app.roadleaf.ReaderRegressionInstrumentation"
@@ -33,7 +33,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("privateRelease")
         }
         create("compact") {
@@ -47,7 +47,7 @@ android {
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             matchingFallbacks += listOf("release")
         }
     }
@@ -89,3 +89,34 @@ val verifyReleaseSigning = tasks.register("verifyReleaseSigning") {
     }
 }
 tasks.configureEach { if (name == "preReleaseBuild") dependsOn(verifyReleaseSigning) }
+
+// A regular unit test cannot detect R8 removing fields accessed only from JNI.
+tasks.register("verifyCompactJniContract") {
+    dependsOn("minifyCompactWithR8")
+    doLast {
+        val lines = layout.buildDirectory.file("outputs/mapping/compact/mapping.txt").get().asFile.readLines()
+        val kept = layout.buildDirectory.file("outputs/mapping/compact/seeds.txt").get().asFile.readLines().toSet()
+        val contracts = mapOf(
+            "OfflineTtsConfig" to listOf("model", "ruleFsts", "ruleFars", "maxNumSentences", "silenceScale"),
+            "OfflineTtsModelConfig" to listOf("vits", "matcha", "kokoro", "zipvoice", "kitten", "pocket", "supertonic", "numThreads", "debug", "provider"),
+            "OfflineTtsKokoroModelConfig" to listOf("model", "voices", "tokens", "dataDir", "lexicon", "lang", "dictDir", "lengthScale"),
+            "GeneratedAudio" to listOf("samples", "sampleRate")
+        )
+        contracts.forEach { (name, fields) ->
+            val fullName = "com.k2fsa.sherpa.onnx.$name"
+            val start = lines.indexOf("$fullName -> $fullName:")
+            check(start >= 0) { "JNI class was removed or renamed: $fullName" }
+            val block = lines.drop(start + 1).takeWhile { it.startsWith(" ") || it.startsWith("#") || it.isBlank() }
+            fields.forEach { field ->
+                // R8 omits unchanged fields from its mapping; its retained-member
+                // report establishes that the original field still exists.
+                val retained = Regex("^${Regex.escape(fullName)}: \\S+ ${Regex.escape(field)}$")
+                val mapping = Regex("^\\s+\\S+\\s+${Regex.escape(field)} -> (\\S+)$")
+                check(kept.any(retained::matches) && block.mapNotNull { mapping.matchEntire(it)?.groupValues?.get(1) }.all { it == field }) {
+                    "JNI field was removed or renamed: $fullName.$field"
+                }
+            }
+        }
+        logger.lifecycle("Verified compact Sherpa JNI classes and field names")
+    }
+}
