@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 class OfflineSpeech(private val context: Context,
     private val awaitSynthesis: suspend (CompletableDeferred<Unit>, Long) -> Unit = { result, timeout -> withTimeout(timeout) { result.await() } }) {
+    private val nativeKokoro = NativeKokoro(context)
     private var engine: TextToSpeech? = null
     private var enginePackage = ""
     private var appliedVoice = ""
@@ -72,11 +73,28 @@ class OfflineSpeech(private val context: Context,
         }.also { cachedVoices = it }
     }
     suspend fun catalog(requestedEngine: String): SpeechCatalog = mutex.withLock {
+        val builtin = SpeechEngineOption(NativeKokoro.ENGINE_ID, "Kokoro 82M • built into Roadleaf")
+        if (requestedEngine == NativeKokoro.ENGINE_ID) {
+            // The library is available even before the model archive is imported.
+            val options = runCatching {
+                val tts = connect("")
+                tts.engines.map { SpeechEngineOption(it.name, it.label) }
+            }.getOrDefault(emptyList())
+            return@withLock SpeechCatalog((options + builtin).distinctBy { it.packageName },
+                NativeKokoro.options(context), NativeKokoro.ENGINE_ID)
+        }
         val tts = connect(requestedEngine)
-        SpeechCatalog(tts.engines.map { SpeechEngineOption(it.name, it.label) }.sortedBy { it.label },
-            offlineVoices(tts, refresh = true).sortedWith(compareBy<Voice> { it.locale.toLanguageTag() }.thenBy { it.name }).map { OfflineVoiceOption(it.name, it.locale.toLanguageTag(), it.quality, it.latency) }, enginePackage)
+        SpeechCatalog((tts.engines.map { SpeechEngineOption(it.name, it.label) } + builtin)
+                .distinctBy { it.packageName }.sortedBy { it.label },
+            offlineVoices(tts, refresh = true).sortedWith(compareBy<Voice> { it.locale.toLanguageTag() }.thenBy { it.name })
+                .map { OfflineVoiceOption(it.name, it.locale.toLanguageTag(), it.quality, it.latency) }, enginePackage)
     }
     suspend fun render(text: String, settings: ListeningSettings, fallbackVoice: String? = null): File = mutex.withLock {
+        if (settings.enginePackage == NativeKokoro.ENGINE_ID) {
+            val chosen = settings.voiceName.takeIf { NativeKokoro.speakerId(it) != null }
+                ?: fallbackVoice.orEmpty()
+            return@withLock nativeKokoro.render(text, chosen, settings.pitch, folder)
+        }
         SpeechRecovery.run(reset = {
             if (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) android.util.Log.d("RoadleafPrep", "reconnecting incomplete speech request")
             engine?.stop(); engine?.shutdown(); engine = null; cachedVoices = null; appliedVoice = ""; appliedPitch = Float.NaN; warmed = ""
@@ -87,6 +105,10 @@ class OfflineSpeech(private val context: Context,
      * and its voice model are loaded before a story's first passage. True when the voice is ready.
      */
     suspend fun warmUp(settings: ListeningSettings): Boolean = mutex.withLock {
+        if (settings.enginePackage == NativeKokoro.ENGINE_ID) {
+            // Native model initializes during the next synth; keep warmup nonblocking.
+            return@withLock NativeKokoro.installed(context)
+        }
         val id = UUID.randomUUID().toString()
         val scratch = File(folder, "warm-up-$id.part")
         var tts: TextToSpeech? = null
@@ -182,5 +204,5 @@ class OfflineSpeech(private val context: Context,
         }
         lastTrimAt = now; lastBudget = mode.cacheBytes
     }
-    fun close() { engine?.stop(); pending.values.forEach { it.cancel() }; pending.clear(); engine?.shutdown(); engine = null; warmed = "" }
+    fun close() { nativeKokoro.close(); engine?.stop(); pending.values.forEach { it.cancel() }; pending.clear(); engine?.shutdown(); engine = null; warmed = "" }
 }
