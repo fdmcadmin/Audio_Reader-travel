@@ -90,9 +90,9 @@ class NovelAiBrowserActivity : ComponentActivity() {
             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
                 Text("NovelAI controls", style = MaterialTheme.typography.titleMedium)
                 Text("From top starts at the first paragraph. Resume continues where you stopped, including new text. Stories not saved to Library stay out of it. Check collection looks for Roadleaf voice profiles linked to the same saved text; it never opens or imports a full NovelAI lorebook.")
-                Text("Use the optional setup below only to save a new story, replace earlier edits, or verify the installed web app.", style = MaterialTheme.typography.bodySmall)
+                Text("Name a new manuscript below or choose a previously saved one. Each named manuscript has its own voice cast and reading position; NovelAI’s general /stories address cannot distinguish them.", style = MaterialTheme.typography.bodySmall)
             } } }
-            item { Text("Optional · save to Library", style = MaterialTheme.typography.titleMedium)
+            item { Text("Name or select this NovelAI manuscript", style = MaterialTheme.typography.titleMedium)
                 Box { OutlinedButton(onClick = { menu = true }) { Text(books.firstOrNull { it.id == selected }?.title ?: "New browser story") }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(text = { Text("New browser story") }, onClick = { selected = ""; title = ""; replace = false; menu = false })
@@ -119,8 +119,8 @@ class NovelAiBrowserActivity : ComponentActivity() {
                 selected = selected.ifBlank { UUID.randomUUID().toString() }
                 app.browserSession.value = BrowserReadingSession(UUID.randomUUID().toString(), selected, title.trim(), browser, follow, replace).also { app.browserReader.remember(it) }
                 replace = false
-                app.browserStatus.value = status.copy(message = "Save choice ready for $title. Return to its writing box and tap From top. Use Resume only when you want the saved paragraph.")
-            }, enabled = status.connected && title.isNotBlank(), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Save reading under this story") }
+                app.browserStatus.value = status.copy(message = "Story selected: $title. Return to this manuscript in NovelAI, tap inside its editor, then tap From top on the Roadleaf bubble to save it under its own name. Other stories and casts remain separate.")
+            }, enabled = status.connected && title.isNotBlank(), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Use this named story for reading") }
                 webApps.forEach { installed -> OutlinedButton(onClick = {
                     app.browserSession.value = BrowserReadingSession(UUID.randomUUID().toString(), "free-${UUID.randomUUID()}", BrowserStory.UNSAVED_TITLE, "com.android.chrome", follow,
                         webAppPackage = installed.packageName, webAppLaunchMs = SystemClock.elapsedRealtime(), temporary = true, pinnedBook = false)
