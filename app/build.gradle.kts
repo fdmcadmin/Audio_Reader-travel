@@ -39,9 +39,9 @@ android {
             initWith(getByName("debug"))
             // Separate package ID to avoid conflicting with a locally signed Roadleaf debug APK.
             // This is a disposable preview: it cannot read or overwrite the existing app data.
-            applicationIdSuffix = ".storypreview"
-            versionNameSuffix = "-story-preview"
-            manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Story Preview"
+            applicationIdSuffix = ".kokoropreview"
+            versionNameSuffix = "-kokoro-preview"
+            manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Kokoro Preview"
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
