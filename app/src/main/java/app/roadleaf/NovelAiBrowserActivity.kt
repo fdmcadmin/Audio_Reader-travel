@@ -31,8 +31,11 @@ class NovelAiBrowserActivity : ComponentActivity() {
         val session by app.browserSession.collectAsStateWithLifecycle()
         val allBooks by remember { app.dao.books() }.collectAsStateWithLifecycle(emptyList())
         val books = allBooks.filter { it.sourceId == BrowserStory.SOURCE }
-        var selected by rememberSaveable { mutableStateOf(session?.takeUnless { it.temporary }?.bookId ?: app.browserReader.lastBook) }
-        var title by rememberSaveable { mutableStateOf(session?.takeUnless { it.temporary }?.title ?: app.browserReader.lastTitle) }
+        // The Library can send a specific, pre-created manuscript profile here.
+        val requestedStory = intent?.getStringExtra("novelAiStoryId").orEmpty()
+        val requestedTitle = intent?.getStringExtra("novelAiStoryTitle").orEmpty()
+        var selected by rememberSaveable { mutableStateOf(requestedStory.ifBlank { session?.takeUnless { it.temporary }?.bookId ?: app.browserReader.lastBook }) }
+        var title by rememberSaveable { mutableStateOf(requestedTitle.ifBlank { session?.takeUnless { it.temporary }?.title ?: app.browserReader.lastTitle }) }
         val installedBrowsers = remember { BrowserApps.installed(this) }
         var browser by rememberSaveable { mutableStateOf(session?.browserPackage ?: installedBrowsers.firstOrNull()?.packageName ?: "com.android.chrome") }
         var follow by rememberSaveable { mutableStateOf(app.browserReader.follow) }
