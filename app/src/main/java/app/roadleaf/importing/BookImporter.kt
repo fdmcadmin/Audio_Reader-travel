@@ -10,8 +10,45 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 import app.roadleaf.playback.ParagraphResume
+import android.content.Intent
+import android.provider.DocumentsContract
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class BookImporter(private val context: Context, private val dao: LibraryDao) {
+    data class ExpeditionRefresh(val book: Book?, val added: Int)
+    private val expeditionMutex = Mutex()
+    private val expeditionPrefs by lazy { context.getSharedPreferences("expedition-folder", Context.MODE_PRIVATE) }
+
+    fun expeditionFolder(): Uri? = expeditionPrefs.getString("tree", null)?.let(Uri::parse)
+
+    suspend fun linkExpeditionFolder(uri: Uri): ExpeditionRefresh {
+        require(DocumentsContract.isTreeUri(uri)) { "Choose the folder containing Meridian Hunt chapter JSON files." }
+        context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        expeditionPrefs.edit().putString("tree", uri.toString()).apply()
+        return refreshExpedition()
+    }
+
+    suspend fun refreshExpedition(): ExpeditionRefresh = expeditionMutex.withLock { withContext(Dispatchers.IO) {
+        val tree = expeditionFolder() ?: return@withContext ExpeditionRefresh(null, 0)
+        val existing = dao.bookBySource(ExpeditionJson.SOURCE_ID, tree.toString())
+        val lastNumber = existing?.let { book -> dao.chapters(book.id).maxOfOrNull { it.ordinal + 1 } }
+        val fresh = ExpeditionJson.readNew(context, tree, lastNumber)
+        if (fresh.isEmpty()) return@withContext ExpeditionRefresh(existing, 0)
+        val book = existing ?: Book(UUID.randomUUID().toString(), ExpeditionJson.SERIES,
+            "Expedition library", ExpeditionJson.SOURCE_ID, tree.toString())
+        val folder = BookFiles.directory(File(context.filesDir, "books"), book.id)
+        check(folder.isDirectory || folder.mkdirs()) { "Could not create the offline Expedition library." }
+        val created = mutableListOf<File>()
+        try {
+            val chapters = fresh.map { item ->
+                val file = File(folder, "expedition-${item.number}.txt").apply { writeText(item.text); created += this }
+                Chapter("${book.id}:${item.number}", book.id, item.number - 1, item.title, file.absolutePath)
+            }
+            dao.appendChapters(if (existing == null) book else null, chapters)
+            ExpeditionRefresh(book, chapters.size)
+        } catch (error: Exception) { created.forEach(File::delete); throw error }
+    } }
     data class Updated(val book: Book, val matchedParagraph: Boolean, val chapterIds: Map<String, String>)
     suspend fun updateText(bookId: String, uri: Uri): Updated = withContext(Dispatchers.IO) {
         val book = requireNotNull(dao.book(bookId)) { "Choose an imported story first." }
