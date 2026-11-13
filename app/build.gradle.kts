@@ -11,8 +11,8 @@ android {
         applicationId = "app.roadleaf"
         minSdk = 26
         targetSdk = 35
-        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 28
-        versionName = "0.3.25"
+        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 31
+        versionName = "0.3.28"
         manifestPlaceholders["roadleafAppLabel"] = "Roadleaf"
         testInstrumentationRunner = "app.roadleaf.ReaderRegressionInstrumentation"
     }
@@ -28,7 +28,7 @@ android {
         }
     }
     buildTypes {
-        debug { applicationIdSuffix = ".debug"; versionNameSuffix = "-debug" }
+        debug { applicationIdSuffix = ".storypreview.dev"; versionNameSuffix = "-story-preview-dev" }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -39,9 +39,9 @@ android {
             initWith(getByName("debug"))
             // Separate package ID to avoid conflicting with a locally signed Roadleaf debug APK.
             // This is a disposable preview: it cannot read or overwrite the existing app data.
-            applicationIdSuffix = ".kokoropreview"
-            versionNameSuffix = "-kokoro-preview"
-            manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Kokoro Preview"
+            applicationIdSuffix = ".storypreview"
+            versionNameSuffix = "-story-preview"
+            manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Story Preview"
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true

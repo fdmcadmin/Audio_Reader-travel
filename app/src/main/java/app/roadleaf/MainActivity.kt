@@ -398,10 +398,13 @@ class MainActivity : ComponentActivity() {
                         }
                         item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("The Meridian Hunt", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Choose the Expedition folder in Dropbox once. Roadleaf saves validated chapter JSON for offline listening and moves to the next numbered chapter automatically.", style = MaterialTheme.typography.bodySmall)
+                            Text("Choose the Expedition folder in Dropbox once. Roadleaf saves its original Chapter 1 TXT and later validated chapter JSON for offline listening, then moves to the next numbered chapter automatically.", style = MaterialTheme.typography.bodySmall)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { expeditionFolderPicker.launch(null) }, enabled = !busy) { Text("Choose folder") }
                                 if (vm.app.importer.expeditionFolder() != null) TextButton(onClick = vm::refreshExpedition, enabled = !busy) { Text("Check chapters") }
+                            }
+                            books.firstOrNull { it.sourceId == "expedition-json" }?.let { expedition ->
+                                Button(onClick = { load(expedition.id) }, enabled = !busy && controller != null) { Text("Listen to The Meridian Hunt") }
                             }
                         } } }
                         item { Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
