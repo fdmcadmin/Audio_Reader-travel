@@ -9,7 +9,7 @@
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent><package android:name="com.google.android.projection.gearhead" /><intent><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="https" android:host="novelai.net" /></intent><intent><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="https" /></intent></queries>
-    <application android:name=".RoadleafApp" android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" android:icon="@drawable/ic_roadleaf" android:label="Roadleaf" android:theme="@style/Theme.Roadleaf" android:usesCleartextTraffic="false" android:supportsRtl="true">
+    <application android:name=".RoadleafApp" android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" android:icon="@drawable/ic_roadleaf" android:label="${roadleafAppLabel}" android:theme="@style/Theme.Roadleaf" android:usesCleartextTraffic="false" android:supportsRtl="true">
         <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
         <meta-data android:name="com.google.android.gms.car.notification.SmallIcon" android:resource="@drawable/ic_playback" />
         <activity android:name=".MainActivity" android:exported="true">
