@@ -13,6 +13,7 @@ android {
         targetSdk = 35
         versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 28
         versionName = "0.3.25"
+        manifestPlaceholders["roadleafAppLabel"] = "Roadleaf"
         testInstrumentationRunner = "app.roadleaf.ReaderRegressionInstrumentation"
     }
     signingConfigs {
@@ -36,8 +37,11 @@ android {
         }
         create("compact") {
             initWith(getByName("debug"))
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-compact"
+            // Separate package ID to avoid conflicting with a locally signed Roadleaf debug APK.
+            // This is a disposable preview: it cannot read or overwrite the existing app data.
+            applicationIdSuffix = ".storypreview"
+            versionNameSuffix = "-story-preview"
+            manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Story Preview"
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true

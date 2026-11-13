@@ -26,6 +26,13 @@ class BrowserStoryTest {
         listOf("novelai.net", "novelai.net/stories?id=story-one", "https://novelai.net/stories", "https://www.novelai.net/stories/one").forEach { assertTrue(it, BrowserStory.novelAiAddress(it)) }
         listOf("http://novelai.net/stories", "novelai.net.attacker.test/stories", "https://novelai.net@attacker.test/stories", "https://attacker.test/novelai.net", "https://novelai.net:444/stories", "https://novelai.net/login", "NovelAI story", "https://novelai.net/stories extra").forEach { assertFalse(it, BrowserStory.novelAiAddress(it)) }
     }
+    @Test fun directBookmarkRequiresAnIndividualNovelAiStory() {
+        assertTrue(BrowserStory.storyAddress("https://novelai.net/stories/a-story-id"))
+        assertTrue(BrowserStory.storyAddress("https://novelai.net/stories?id=11111111-2222-3333-4444-555555555555"))
+        assertFalse(BrowserStory.storyAddress("https://novelai.net/stories"))
+        assertFalse(BrowserStory.storyAddress("https://novelai.net/stories?id="))
+        assertFalse(BrowserStory.storyAddress("https://other.example/stories/a-story-id"))
+    }
     @Test fun editorOnlyNeverPasswordOrNativeBrowserSearch() {
         val text = "An original traveller crossed the quiet valley toward a distant village."
         assertEquals(text, BrowserStory.editorText(text, true, false, true))
