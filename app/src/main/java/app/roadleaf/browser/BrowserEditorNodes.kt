@@ -1,10 +1,32 @@
 package app.roadleaf.browser
 
 import android.view.accessibility.AccessibilityNodeInfo
+import android.os.Bundle
+import android.graphics.RectF
 
 /** Browser chrome verifies the host; only a focused editable web node can become the source. */
 @Suppress("DEPRECATION")
 object BrowserEditorNodes {
+    /** The first character actually drawn in the editor viewport, when the browser exposes locations. */
+    fun firstVisibleOffset(node: AccessibilityNodeInfo): Int? {
+        val key = AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY
+        if (node.availableExtraData?.contains(key) != true) return null
+        val raw = node.text?.toString().orEmpty()
+        if (raw.isEmpty()) return null
+        val batch = 2048
+        for (start in raw.indices step batch) {
+            val size = minOf(batch, raw.length - start)
+            val arguments = Bundle().apply {
+                putInt(AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_START_INDEX, start)
+                putInt(AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_LENGTH, size)
+            }
+            if (!node.refreshWithExtraData(key, arguments)) return null
+            val locations = node.extras.getParcelableArray(key) ?: return null
+            val visible = locations.indexOfFirst { it is RectF && !it.isEmpty }
+            if (visible >= 0) return BrowserStory.offsetOf(raw, start + visible)
+        }
+        return null
+    }
     /** Chromium marks rich editors as generic containers; other browsers expose a multi-line editable node. */
     private fun richEditor(node: AccessibilityNodeInfo): Boolean {
         val role = node.extras.getString("AccessibilityNodeInfo.chromeRole")

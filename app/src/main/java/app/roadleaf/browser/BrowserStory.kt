@@ -18,6 +18,16 @@ object BrowserStory {
         uri.scheme == "https" && uri.userInfo == null && uri.port in setOf(-1, 443) && uri.host?.lowercase() in setOf("novelai.net", "www.novelai.net") &&
             (uri.path.isNullOrBlank() || uri.path == "/" || uri.path == "/stories" || uri.path.startsWith("/stories/"))
     }.getOrDefault(false)
+    /** A bookmark must point to an individual story; the generic library page is not enough. */
+    fun storyAddress(value: String): Boolean = runCatching {
+        val uri = URI(value.trim())
+        if (!novelAiAddress(value)) return false
+        val path = uri.path.orEmpty()
+        val storyPath = path.startsWith("/stories/") && path.length > "/stories/".length
+        val storyId = uri.rawQuery?.split('&')?.singleOrNull { it.startsWith("id=") }
+            ?.substringAfter('=')?.takeIf { it.matches(Regex("[A-Za-z0-9-]{6,128}")) }
+        storyPath || (path == "/stories" && storyId != null)
+    }.getOrDefault(false)
     fun editorText(text: String, editable: Boolean, password: Boolean, insideWeb: Boolean): String {
         require(editable && !password && insideWeb) { "Tap NovelAI's story-writing box first. Menus, search and sign-in fields are not read." }
         require(text.length in 40..MAX_TEXT) { "The browser must expose 40–500,000 characters from the story box. No whole-page fallback is used." }
