@@ -114,6 +114,7 @@ class MainActivity : ComponentActivity() {
         val learnedRevision by vm.app.learnedCasts.changes.collectAsStateWithLifecycle()
         val castBooks = books.map { CastBookChoice(it.id, it.title) } + webBooks.filter { WebBookLinks.resolve(it.chapterUrl)?.readable == true }.map { CastBookChoice(it.bookUrl, it.title, it.chapterUrl) }
         val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::import) }
+        val expeditionFolderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let(vm::linkExpedition) }
         fun openBrowser(url: String) { runCatching { startActivity(Intent(Intent.ACTION_VIEW, url.toUri())); vm.rememberWebsite(url) }.onFailure { vm.message.value = "No browser is available." } }
         fun openWebBook(url: String, resume: Boolean = false) {
             startActivity(Intent(this@MainActivity, WebReaderActivity::class.java).putExtra("url", url)
@@ -366,6 +367,14 @@ class MainActivity : ComponentActivity() {
                                 OutlinedButton(onClick = { importer.launch(arrayOf("application/epub+zip", "text/plain", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Import file") }
                             }
                         }
+                        item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("The Meridian Hunt", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Choose the Expedition folder in Dropbox once. Roadleaf saves validated chapter JSON for offline listening and moves to the next numbered chapter automatically.", style = MaterialTheme.typography.bodySmall)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { expeditionFolderPicker.launch(null) }, enabled = !busy) { Text("Choose folder") }
+                                if (vm.app.importer.expeditionFolder() != null) TextButton(onClick = vm::refreshExpedition, enabled = !busy) { Text("Check chapters") }
+                            }
+                        } } }
                         item { Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("Quick picks", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                             Text("Website books save here automatically with the latest page you opened.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -412,7 +421,7 @@ class MainActivity : ComponentActivity() {
                             }
                             TextButton(onClick = { vm.app.browserReader.showNovelAi(false) }) { Text("Remove NovelAI") }
                         } } }
-                        item { Spacer(Modifier.height(4.dp)); Text("Offline library", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold); Text("Imported EPUB and TXT files work without a connection.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        item { Spacer(Modifier.height(4.dp)); Text("Offline library", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold); Text("Imported EPUB, TXT and Expedition chapters work without a connection.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         if (books.isEmpty()) item { Text("Your imported books will appear here.", style = MaterialTheme.typography.bodyMedium); TextButton(onClick = vm::sample, enabled = !busy) { Text("Try a short voice test") } }
                         items(books, key = { it.id }) { book -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
                             Text(book.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold); Text(book.author, style = MaterialTheme.typography.bodySmall)

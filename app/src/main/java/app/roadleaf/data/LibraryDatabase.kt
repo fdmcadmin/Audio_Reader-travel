@@ -17,12 +17,17 @@ data class Chapter(@PrimaryKey val id: String, val bookId: String, val ordinal: 
 @Dao interface LibraryDao {
     @Query("SELECT * FROM Book ORDER BY addedAt DESC") fun books(): Flow<List<Book>>
     @Query("SELECT * FROM Book WHERE id=:id") suspend fun book(id: String): Book?
+    @Query("SELECT * FROM Book WHERE sourceId=:sourceId AND sourceUrl=:sourceUrl LIMIT 1") suspend fun bookBySource(sourceId: String, sourceUrl: String): Book?
     @Query("SELECT * FROM Book ORDER BY addedAt DESC LIMIT :limit OFFSET :offset") suspend fun booksPage(limit: Int, offset: Int): List<Book>
     @Query("SELECT * FROM Book WHERE title LIKE :query OR author LIKE :query ORDER BY addedAt DESC LIMIT :limit OFFSET :offset") suspend fun searchBooks(query: String, limit: Int, offset: Int): List<Book>
     @Query("SELECT * FROM Chapter WHERE bookId=:bookId ORDER BY ordinal") suspend fun chapters(bookId: String): List<Chapter>
     @Query("SELECT * FROM Chapter WHERE id=:id") suspend fun chapter(id: String): Chapter?
     @Insert suspend fun insertBook(book: Book)
     @Insert suspend fun insertChapters(chapters: List<Chapter>)
+    @Transaction suspend fun appendChapters(book: Book?, chapters: List<Chapter>) {
+        if (book != null) insertBook(book)
+        insertChapters(chapters)
+    }
     @Update suspend fun updateChapter(chapter: Chapter)
     @Query("DELETE FROM Chapter WHERE bookId=:bookId") suspend fun removeChapters(bookId: String)
     @Transaction suspend fun replaceText(bookId: String, chapters: List<Chapter>, progress: Progress) {
