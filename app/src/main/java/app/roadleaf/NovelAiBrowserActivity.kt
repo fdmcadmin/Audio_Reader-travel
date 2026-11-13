@@ -162,12 +162,23 @@ class NovelAiBrowserActivity : ComponentActivity() {
                 if (!status.connected) Text("You can save its name and Lorebook now. To capture text, enable Roadleaf Story Preview's Accessibility browser reader.", style = MaterialTheme.typography.bodySmall)
                 if (books.any { it.id == selected }) Text("Saved to Roadleaf Library as an independent manuscript with its own character voices.", style = MaterialTheme.typography.bodySmall)
                 webApps.forEach { installed -> OutlinedButton(onClick = {
-                    app.browserSession.value = BrowserReadingSession(UUID.randomUUID().toString(), "free-${UUID.randomUUID()}", BrowserStory.UNSAVED_TITLE, "com.android.chrome", follow,
-                        webAppPackage = installed.packageName, webAppLaunchMs = SystemClock.elapsedRealtime(), temporary = true, pinnedBook = false)
+                    // Preserve the selected book ID and cast when opening the installed web app.
+                    val saved = books.firstOrNull { it.id == selected }
+                    val temporary = saved == null
+                    val chosen = BrowserReadingSession(UUID.randomUUID().toString(),
+                        saved?.id ?: ("free-" + UUID.randomUUID().toString()),
+                        saved?.title ?: BrowserStory.UNSAVED_TITLE,
+                        browser.ifBlank { "com.android.chrome" }, follow, replace && !temporary,
+                        webAppPackage = installed.packageName, webAppLaunchMs = SystemClock.elapsedRealtime(),
+                        temporary = temporary, pinnedBook = !temporary)
+                    app.browserSession.value = chosen
+                    if (!temporary) app.browserReader.remember(chosen)
                     replace = false
-                    // Let the enabled service bind the new session before the OS window event.
                     window.decorView.postDelayed({ startActivity(installed.launch) }, 400)
-                }, enabled = status.connected, modifier = Modifier.fillMaxWidth()) { Text("Open installed NovelAI web app") } }
+                }, enabled = status.connected, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (books.any { it.id == selected }) "Open installed NovelAI web app for $title"
+                         else "Open installed NovelAI web app (unsaved reading)")
+                } }
                 if (webApps.isNotEmpty()) Text("For the installed web app, use this button each time you start a link. It verifies the installed NovelAI package and binds its window instead of relying on a page title.", style = MaterialTheme.typography.bodySmall)
                 if (session != null) TextButton(onClick = { app.browserSession.value = null; app.browserStatus.value = status.copy(message = "Browser link stopped. Saved story remains in Library.") }) { Text("Stop browser link") }
             }
