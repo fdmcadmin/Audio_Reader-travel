@@ -90,6 +90,8 @@ class MainActivity : ComponentActivity() {
         var showAllWebBooks by remember { mutableStateOf(false) }
         var lorebookBook by rememberSaveable { mutableStateOf<String?>(null) }
         var lorebookDraft by remember { mutableStateOf<BookVoiceCast?>(null) }
+        var lorebookReplace by rememberSaveable { mutableStateOf(false) }
+        var showImportChoice by remember { mutableStateOf(false) }
         var exportBook by rememberSaveable { mutableStateOf<String?>(null) }
         var exportDraft by remember { mutableStateOf<BookVoiceCast?>(null) }
         var showVoiceSources by remember { mutableStateOf(false) }
@@ -112,7 +114,7 @@ class MainActivity : ComponentActivity() {
         val castRequest by pendingCast.collectAsStateWithLifecycle()
         val castRevision by vm.app.casts.changes.collectAsStateWithLifecycle()
         val learnedRevision by vm.app.learnedCasts.changes.collectAsStateWithLifecycle()
-        val castBooks = books.map { CastBookChoice(it.id, it.title) } + webBooks.filter { WebBookLinks.resolve(it.chapterUrl)?.readable == true }.map { CastBookChoice(it.bookUrl, it.title, it.chapterUrl) }
+        val castBooks = books.map { CastBookChoice(it.id, if (it.sourceId == BrowserStory.SOURCE) "NovelAI story · ${it.title}" else it.title) } + webBooks.filter { WebBookLinks.resolve(it.chapterUrl)?.readable == true }.map { CastBookChoice(it.bookUrl, it.title, it.chapterUrl) }
         val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::import) }
         fun openBrowser(url: String) { runCatching { startActivity(Intent(Intent.ACTION_VIEW, url.toUri())); vm.rememberWebsite(url) }.onFailure { vm.message.value = "No browser is available." } }
         fun openWebBook(url: String, resume: Boolean = false) {
@@ -186,7 +188,11 @@ class MainActivity : ComponentActivity() {
                         output.toString("UTF-8")
                     } ?: error("Cannot read this file.")
                 }
-                val imported = CastFiles.read(source, lorebookDraft ?: vm.app.casts.get(book))
+                // An import always targets one named Library book. Replace starts with a fresh cast
+                // while retaining only that book's narrator choice and scene mode.
+                val current = lorebookDraft ?: vm.app.casts.get(book)
+                val base = if (lorebookReplace) BookVoiceCast(narratorVoice = current.narratorVoice, sceneOnly = current.sceneOnly) else current
+                val imported = CastFiles.read(source, base)
                 // Delegate installed voices from the selected speech engine and accent.
                 val catalog = voiceCatalog?.takeIf { settings.enginePackage.isBlank() || it.enginePackage == settings.enginePackage }
                 val installed = catalog?.voices?.filter { it.localeTag.equals(settings.localeTag, true) }?.map { it.name }.orEmpty()
@@ -208,7 +214,7 @@ class MainActivity : ComponentActivity() {
                         if (delegated.unlabelled) append("This speech app doesn't label voices female or male, so check each character with Hear.")
                     }
                 }.trim()
-                lorebookBook = null; lorebookDraft = null
+                lorebookBook = null; lorebookDraft = null; lorebookReplace = false
                 if (catalog != null && delegated.needsMoreVoices) showVoiceSources = true
             }
         }
@@ -405,11 +411,12 @@ class MainActivity : ComponentActivity() {
                         if (novelAiAdded) item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             Text("NovelAI", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                             Text("Your NovelAI stories, read in your browser", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Open your story in your browser, tap inside the story box, tap the Roadleaf bubble, then From top or Resume. New text is read as NovelAI writes it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("For separate story voices and bookmarks, first choose Save / link a specific story below. A general NovelAI website link cannot distinguish different manuscripts.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { openNovelAi() }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Open NovelAI") }
                                 TextButton(onClick = { startActivity(Intent(this@MainActivity, NovelAiBrowserActivity::class.java)) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("How to read it") }
                             }
+                            OutlinedButton(onClick = { startActivity(Intent(this@MainActivity, NovelAiBrowserActivity::class.java)) }, modifier = Modifier.fillMaxWidth()) { Text("Save / link a specific NovelAI story") }
                             TextButton(onClick = { vm.app.browserReader.showNovelAi(false) }) { Text("Remove NovelAI") }
                         } } }
                         item { Spacer(Modifier.height(4.dp)); Text("Offline library", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold); Text("Imported EPUB and TXT files work without a connection.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -470,7 +477,7 @@ class MainActivity : ComponentActivity() {
                                         active.awaitCommand(NarrationService.RESET_LEARNING, Bundle().apply { putString("book", key) })
                                         vm.message.value = "Learning reset. Continue this book from Library."
                                     } }
-                                }, onImportLorebook = { key, draft -> lorebookBook = key; lorebookDraft = draft; lorebookPicker.launch(arrayOf("*/*")) },
+                                }, onImportLorebook = { key, draft -> lorebookBook = key; lorebookDraft = draft; showImportChoice = true },
                                 onExport = { key, draft -> exportBook = key; exportDraft = draft; castExporter.launch((castBooks.firstOrNull { it.id == key }?.title ?: "Book").replace(Regex("[^A-Za-z0-9 _-]"), "").trim().ifBlank { "Book" } + " cast.json") },
                                 onMoreVoices = { showVoiceSources = true })
                         }
@@ -526,6 +533,25 @@ class MainActivity : ComponentActivity() {
                 vm.message.value = "Deleted ${book.title} from library"
             }
         }) { Text("Delete book") } }, dismissButton = { TextButton(onClick = { bookToDelete = null }) { Text("Keep book") } }) }
+        if (showImportChoice) {
+            val target = castBooks.firstOrNull { it.id == lorebookBook }?.title ?: "this book"
+            AlertDialog(onDismissRequest = { showImportChoice = false; lorebookBook = null; lorebookDraft = null },
+                title = { Text("Import voices into $target") },
+                text = { Text("Choose whether to add characters to this story's saved cast or replace only this story's cast. Other stories are not changed. For NovelAI, save each manuscript as its own named story first.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        lorebookReplace = false; showImportChoice = false; lorebookPicker.launch(arrayOf("*/*"))
+                    }) { Text("Add to this cast") }
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(onClick = {
+                            lorebookReplace = true; showImportChoice = false; lorebookPicker.launch(arrayOf("*/*"))
+                        }) { Text("Replace this cast") }
+                        TextButton(onClick = { showImportChoice = false; lorebookBook = null; lorebookDraft = null }) { Text("Cancel") }
+                    }
+                })
+        }
         if (showVoiceSources) VoiceSourcesDialog(voiceCatalog?.let { c -> c.engines.firstOrNull { it.packageName == c.enginePackage }?.label } ?: "your speech app", onEngineVoices = ::engineVoices, onOpen = ::openLink) { showVoiceSources = false }
         startChoice?.let { choice -> StartFromWordDialog(choice, onDismiss = { startChoice = null }) { at ->
             send(NarrationService.START_AT, Bundle().apply {
