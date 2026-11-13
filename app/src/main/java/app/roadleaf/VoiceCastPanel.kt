@@ -23,7 +23,12 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     var showLearned by remember(selectedBook) { mutableStateOf(false) }
     var reset by remember { mutableStateOf(false) }
     val matches = catalog != null && (settings.enginePackage.isBlank() || catalog.enginePackage == settings.enginePackage)
-    val voices = if (matches) catalog!!.voices.filter { it.localeTag == settings.localeTag } else emptyList()
+    val voices = if (matches) catalog!!.voices.filter {
+        it.localeTag == settings.localeTag ||
+            (catalog.enginePackage == NativeKokoro.ENGINE_ID &&
+                it.localeTag.startsWith("en-", ignoreCase = true) &&
+                settings.localeTag.startsWith("en-", ignoreCase = true))
+    } else emptyList()
     val choices = listOf(Choice("", if (draft.adaptive) "Choose as the reader learns" else "Use narrator")) + voices.map { Choice(it.name, voiceLabel(it.name, catalog?.enginePackage.orEmpty())) }
     val effective = remember(draft, learned, catalog, settings) {
         AdaptiveCast.prepare(draft, learned, catalog?.let { AdaptiveVoices.from(it, settings) } ?: AdaptiveVoices(), "preview", 0, "").cast
@@ -84,7 +89,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             } }
             if (matches) {
                 val engine = catalog!!.engines.firstOrNull { it.packageName == catalog.enginePackage }?.label ?: catalog.enginePackage
-                Text("Using $engine · ${voices.size} installed ${settings.localeTag} voices. One speech app supplies this cast at a time.", style = MaterialTheme.typography.bodySmall)
+                Text("Using $engine · ${voices.size} compatible English/offline voices. Each saved book keeps its own assignments.", style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { onPreview(available.narrator, sample, 1f) }, enabled = !busy) { Text("Hear narrator for comparison") }
                 val selected = listOf(available.narrator, auditionMain, auditionFemale, auditionMale).filter(String::isNotBlank)
                 if (selected.distinct().size < selected.size) Text("Some roles share the same voice. Choose different installed voices below for clearer distinction.", style = MaterialTheme.typography.bodySmall)
