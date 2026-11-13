@@ -12,7 +12,6 @@ data class SceneNarratorChoice(val cast: BookVoiceCast, val viewpoint: String)
 object SceneReadAhead {
     private const val THINK = "(?:thought|wondered|realized|realised|felt|noticed|remembered|feared|hoped|decided|imagined|considered)"
     private val povHeader = Regex("""(?im)^\s*\[POV\s*:\s*([^\]\n]+)\]""")
-    private val newPlace = Regex("""(?i)^\s*(?:Meanwhile|Elsewhere|Back at|In another part of)\b""")
 
     private fun aliases(person: CastCharacter): List<String> =
         (listOf(person.name) + person.aliases.split(',')).map(String::trim).filter { it.length >= 2 }
@@ -43,13 +42,11 @@ object SceneReadAhead {
         if (!cast.enabled || !cast.followViewpoint) return SceneNarratorChoice(cast, "")
         val people = names(cast)
         if (people.isEmpty()) return SceneNarratorChoice(cast, "")
-        val breakBefore = newPlace.containsMatchIn(text.take(120))
-        val carried = previous.activeViewpoint.takeUnless { breakBefore }.orEmpty()
         val explicit = povHeader.find(text)?.groupValues?.get(1)?.let { nameIn(it, people) }
 
         // Quoted speech is not evidence of who is narrating the scene.
         val here = DialogueQuotes.mask(text, previous.closingQuote)
-        val ahead = DialogueQuotes.mask(lookahead.take(450), null)
+        val ahead = DialogueQuotes.mask(lookahead.take(450), previous.closingQuote.takeIf { text.isEmpty() })
         val scores = people.map { (name, labels) ->
             val score = labels.distinct().sumOf { label ->
                 val token = "(?<![\\p{L}\\p{N}_])" + Regex.escape(label) + "(?![\\p{L}\\p{N}_])"
@@ -60,16 +57,15 @@ object SceneReadAhead {
                     .findAll(here).count()
                 val internal = Regex(token + "(?:['’]s)?\\s+(?:heart|mind|pulse|fear)\\b", RegexOption.IGNORE_CASE)
                     .findAll(here).count()
-                val future = thoughts.takeIf { it > 0 } ?: Regex(token + "\\s+" + THINK, RegexOption.IGNORE_CASE)
-                    .findAll(ahead).count()
-                thoughts * 3.0 + sensory * 3.0 + internal * 1.0 + (future - thoughts).coerceAtLeast(0) * 1.2
+                val future = Regex(token + "\\s+" + THINK, RegexOption.IGNORE_CASE).findAll(ahead).count()
+                thoughts * 3.0 + sensory * 3.0 + internal * 1.0 + future * 0.8
             }
             name to score
         }.sortedByDescending { it.second }
         val winner = scores.firstOrNull()
         val runner = scores.getOrNull(1)?.second ?: 0.0
         val inferred = winner?.takeIf { it.second >= 2.5 && it.second >= runner + 1.4 }?.first
-        val selected = explicit ?: inferred ?: carried
+        val selected = explicit ?: inferred.orEmpty()
         if (selected.isBlank()) return SceneNarratorChoice(cast, "")
         val chosenVoice = voice(cast, selected).ifBlank { return SceneNarratorChoice(cast, selected) }
         return SceneNarratorChoice(cast.copy(storyVoice = chosenVoice), selected)
