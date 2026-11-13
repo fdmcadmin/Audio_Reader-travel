@@ -215,7 +215,10 @@ class MainActivity : ComponentActivity() {
                 val imported = CastFiles.read(source, base)
                 // Delegate installed voices from the selected speech engine and accent.
                 val catalog = voiceCatalog?.takeIf { settings.enginePackage.isBlank() || it.enginePackage == settings.enginePackage }
-                val installed = catalog?.voices?.filter { it.localeTag.equals(settings.localeTag, true) }?.map { it.name }.orEmpty()
+                val installed = catalog?.voices?.filter {
+                    it.localeTag.equals(settings.localeTag, true) ||
+                        (catalog.enginePackage == NativeKokoro.ENGINE_ID && it.localeTag.startsWith("en-", ignoreCase = true))
+                }?.map { it.name }.orEmpty()
                 val delegated = VoiceDelegation.assign(imported.cast, installed, imported.cast.narratorVoice.ifBlank { settings.voiceName })
                 vm.app.casts.save(book, delegated.cast)
                 send(NarrationService.APPLY_CAST, Bundle().apply { putString("book", book) })
