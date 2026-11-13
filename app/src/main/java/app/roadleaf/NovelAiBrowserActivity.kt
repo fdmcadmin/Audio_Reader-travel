@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.roadleaf.browser.*
+import app.roadleaf.data.Book
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 class NovelAiBrowserActivity : ComponentActivity() {
@@ -36,8 +39,12 @@ class NovelAiBrowserActivity : ComponentActivity() {
         val requestedTitle = intent?.getStringExtra("novelAiStoryTitle").orEmpty()
         var selected by rememberSaveable { mutableStateOf(requestedStory.ifBlank { session?.takeUnless { it.temporary }?.bookId ?: app.browserReader.lastBook }) }
         var title by rememberSaveable { mutableStateOf(requestedTitle.ifBlank { session?.takeUnless { it.temporary }?.title ?: app.browserReader.lastTitle }) }
-        val installedBrowsers = remember { BrowserApps.installed(this) }
-        var browser by rememberSaveable { mutableStateOf(session?.browserPackage ?: installedBrowsers.firstOrNull()?.packageName ?: "com.android.chrome") }
+        // URL handlers such as remote-control apps are not real browsers.
+        val installedBrowsers = remember { BrowserApps.installed(this).filter { it.packageName in BrowserApps.known } }
+        var browser by rememberSaveable { mutableStateOf(
+            session?.browserPackage?.takeIf { pkg -> installedBrowsers.any { it.packageName == pkg } }
+                ?: installedBrowsers.firstOrNull { it.packageName == "com.android.chrome" }?.packageName
+                ?: installedBrowsers.firstOrNull()?.packageName.orEmpty()) }
         var follow by rememberSaveable { mutableStateOf(app.browserReader.follow) }
         var anyPage by rememberSaveable { mutableStateOf(app.browserReader.anyPage) }
         var followPages by rememberSaveable { mutableStateOf(app.browserReader.followPages) }
@@ -87,7 +94,7 @@ class NovelAiBrowserActivity : ComponentActivity() {
             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("NovelAI · read your stories", style = MaterialTheme.typography.titleMedium)
                 Text("1. Turn on the browser reader above.\n2. Open NovelAI in your browser and open your story.\n3. Tap inside your story box, tap the Roadleaf bubble, then From top or Resume.\n4. New text is read as NovelAI writes it. When the reading catches up, generate more, then press Play or Resume.")
-                OutlinedButton(onClick = { runCatching { startActivity(Intent(Intent.ACTION_VIEW, "https://novelai.net/stories".toUri()).setPackage(browser)) } }, modifier = Modifier.fillMaxWidth()) { Text("Open NovelAI in browser") }
+                OutlinedButton(onClick = { runCatching { startActivity(Intent(Intent.ACTION_VIEW, "https://novelai.net/stories".toUri()).setPackage(browser)) }.onFailure { app.browserStatus.value = app.browserStatus.value.copy(message = "Cannot open NovelAI in this browser. Choose Chrome or another supported browser.") } }, enabled = browser.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Open NovelAI in browser") }
                 Text("You can return to your already-open tab instead. Android may open another tab with the same browser sign-in.", style = MaterialTheme.typography.bodySmall)
             } } }
             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
@@ -105,12 +112,13 @@ class NovelAiBrowserActivity : ComponentActivity() {
                 if (books.none { it.id == selected }) OutlinedTextField(title, { title = it.take(160) }, label = { Text("Your story title") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             }
             item { Text("Browser for NovelAI", style = MaterialTheme.typography.titleMedium)
-                Box { OutlinedButton(onClick = { browserMenu = true }) { Text(installedBrowsers.firstOrNull { it.packageName == browser }?.label ?: BrowserApps.label(browser)) }
+                Box { OutlinedButton(onClick = { browserMenu = true }, enabled = installedBrowsers.isNotEmpty()) { Text(installedBrowsers.firstOrNull { it.packageName == browser }?.label ?: "No supported browser found") }
                     DropdownMenu(expanded = browserMenu, onDismissRequest = { browserMenu = false }) {
                         installedBrowsers.forEach { installed -> DropdownMenuItem(text = { Text(installed.label) }, onClick = { browser = installed.packageName; browserMenu = false }) }
                     }
                 }
-                Text("Chromium-based browsers (Chrome, Edge, Brave, Samsung Internet, Opera, Vivaldi) expose the story editor most reliably.", style = MaterialTheme.typography.bodySmall)
+                Text("Choose a real browser, preferably Chrome. URL-handling apps such as TV Remote cannot read NovelAI.", style = MaterialTheme.typography.bodySmall)
+                if (installedBrowsers.isEmpty()) Text("No supported browser found. You can still save and import character voices, but browser playback needs a supported browser.", color = MaterialTheme.colorScheme.error)
             }
             item { Row { Checkbox(follow, { follow = it; app.browserReader.follow = it }); Text("Follow new completed paragraphs", Modifier.padding(top = 12.dp)) }
                 Text("Already captured text plays offline and in the background. New text is captured only while this story is visible. A partial final paragraph waits for its next line break; Read story includes the current paragraph.", style = MaterialTheme.typography.bodySmall)
