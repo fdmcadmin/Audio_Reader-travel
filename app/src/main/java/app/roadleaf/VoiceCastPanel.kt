@@ -15,7 +15,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     books: List<CastBookChoice>, selectedBook: String, onBook: (String) -> Unit,
     value: BookVoiceCast, learned: LearnedCast, settings: ListeningSettings, catalog: SpeechCatalog?, busy: Boolean,
     onSave: (String, BookVoiceCast) -> Unit, onPreview: (String, String, Float) -> Unit, onRefresh: () -> Unit, onReset: (String) -> Unit,
-    onImportLorebook: (String, BookVoiceCast) -> Unit, onExport: (String, BookVoiceCast) -> Unit = { _, _ -> }, onMoreVoices: () -> Unit = {}
+    onImportLorebook: (String, BookVoiceCast) -> Unit, onCreateStoryProfile: () -> Unit, onExport: (String, BookVoiceCast) -> Unit = { _, _ -> }, onMoreVoices: () -> Unit = {}
 ) {
     var draft by remember(selectedBook, value) { mutableStateOf(value) }
     var editing by remember(selectedBook) { mutableStateOf<Int?>(null) }
@@ -42,7 +42,8 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Character voices", style = MaterialTheme.typography.titleLarge)
-        Text("Each new book begins with the narrator. In Automatic, character voices emerge as clear cues repeat, and stay saved for that book.", style = MaterialTheme.typography.bodyMedium)
+        Text("Each story has its own narrator and character voices. Create a NovelAI story profile before importing its Lorebook, or choose a saved book.", style = MaterialTheme.typography.bodyMedium)
+        OutlinedButton(onClick = onCreateStoryProfile, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Create NovelAI story voice profile") }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { onImportLorebook(selectedBook, draft) }, enabled = selectedBook.isNotBlank() && !busy) { Text("Import cast or lorebook") }
             OutlinedButton(onClick = { onExport(selectedBook, draft) }, enabled = selectedBook.isNotBlank() && !busy) { Text("Export cast") }
@@ -55,7 +56,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             Text("Activate profiles only in their scene")
         }
         Text("Scene breaks: ***, ---, ⁂, ###, or [Scene: names]. Names/aliases activate profiles within that scene; the next break clears them. Descriptions are never read aloud.", style = MaterialTheme.typography.bodySmall)
-        if (books.isEmpty()) Text("Add a website book or import a file in Library to set up its cast.")
+        if (books.isEmpty()) Text("No stories are registered in this installation yet. Tap Create NovelAI story voice profile above, then import the Lorebook without capturing text first.")
         else {
             ChoicePicker("Book", selectedBook, books.map { Choice(it.id, it.title) }, onSelect = onBook)
             ChoicePicker("Book narrator", draft.narratorVoice, listOf(Choice("", "Use default narrator")) + voices.map { Choice(it.name, voiceLabel(it.name, catalog?.enginePackage.orEmpty())) }, !busy && matches) {
