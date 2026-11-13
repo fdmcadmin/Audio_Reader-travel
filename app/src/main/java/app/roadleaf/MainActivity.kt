@@ -92,6 +92,8 @@ class MainActivity : ComponentActivity() {
         var lorebookDraft by remember { mutableStateOf<BookVoiceCast?>(null) }
         var lorebookReplace by rememberSaveable { mutableStateOf(false) }
         var showImportChoice by remember { mutableStateOf(false) }
+        var showCreateStoryProfile by remember { mutableStateOf(false) }
+        var newStoryProfileName by rememberSaveable { mutableStateOf("") }
         var exportBook by rememberSaveable { mutableStateOf<String?>(null) }
         var exportDraft by remember { mutableStateOf<BookVoiceCast?>(null) }
         var showVoiceSources by remember { mutableStateOf(false) }
@@ -423,9 +425,13 @@ class MainActivity : ComponentActivity() {
                         if (books.isEmpty()) item { Text("Your imported books will appear here.", style = MaterialTheme.typography.bodyMedium); TextButton(onClick = vm::sample, enabled = !busy) { Text("Try a short voice test") } }
                         items(books, key = { it.id }) { book -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
                             Text(book.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold); Text(book.author, style = MaterialTheme.typography.bodySmall)
-                            Text("Available offline", style = MaterialTheme.typography.labelMedium)
+                            Text(if (book.sourceId == BrowserStory.SOURCE) "NovelAI manuscript · separate voice profile" else "Available offline", style = MaterialTheme.typography.labelMedium)
                             Row { Button(onClick = { load(book.id) }) { Text("Listen") }; TextButton(onClick = { vm.showChapters(book.id); showQueue = true }, enabled = !busy) { Text("Chapters") } }
                             TextButton(onClick = { castBook = book.id; tab = 2; voiceSection = 1 }) { Text("Character voices") }
+                            if (book.sourceId == BrowserStory.SOURCE) TextButton(onClick = {
+                                startActivity(Intent(this@MainActivity, NovelAiBrowserActivity::class.java)
+                                    .putExtra("novelAiStoryId", book.id).putExtra("novelAiStoryTitle", book.title))
+                            }) { Text("Link / read this story in NovelAI") }
                             TextButton(onClick = { send(NarrationService.RESUME_PARAGRAPH, Bundle().apply { putString("bookId", book.id) }) }, enabled = !busy && controller != null) { Text("Resume paragraph") }
                             if (book.sourceId == "author-file") TextButton(onClick = { updateBook = book.id; storyUpdatePicker.launch(arrayOf("text/plain", "application/octet-stream")) }, enabled = !busy && controller != null) { Text("Update story text (TXT)") }
                             TextButton(onClick = { bookToDelete = book }, enabled = !busy && controller != null) { Text("Delete from library") }
@@ -478,6 +484,7 @@ class MainActivity : ComponentActivity() {
                                         vm.message.value = "Learning reset. Continue this book from Library."
                                     } }
                                 }, onImportLorebook = { key, draft -> lorebookBook = key; lorebookDraft = draft; showImportChoice = true },
+                                onCreateStoryProfile = { newStoryProfileName = ""; showCreateStoryProfile = true },
                                 onExport = { key, draft -> exportBook = key; exportDraft = draft; castExporter.launch((castBooks.firstOrNull { it.id == key }?.title ?: "Book").replace(Regex("[^A-Za-z0-9 _-]"), "").trim().ifBlank { "Book" } + " cast.json") },
                                 onMoreVoices = { showVoiceSources = true })
                         }
@@ -533,6 +540,29 @@ class MainActivity : ComponentActivity() {
                 vm.message.value = "Deleted ${book.title} from library"
             }
         }) { Text("Delete book") } }, dismissButton = { TextButton(onClick = { bookToDelete = null }) { Text("Keep book") } }) }
+        if (showCreateStoryProfile) AlertDialog(
+            onDismissRequest = { showCreateStoryProfile = false },
+            title = { Text("Create a NovelAI story voice profile") },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Each manuscript gets its own voice cast. Import its Lorebook now, then connect the NovelAI editor later. No story text or existing voices are overwritten.")
+                OutlinedTextField(newStoryProfileName, { newStoryProfileName = it.take(160) },
+                    label = { Text("Name of this NovelAI story") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            } },
+            confirmButton = { Button(onClick = {
+                val name = newStoryProfileName.trim()
+                showCreateStoryProfile = false
+                vm.task {
+                    val id = java.util.UUID.randomUUID().toString()
+                    vm.app.dao.insertBook(Book(id, name, "Personal NovelAI story", BrowserStory.SOURCE, "https://novelai.net/stories"))
+                    vm.app.browserReader.showNovelAi(true)
+                    castBook = id
+                    pendingCast.value = null
+                    tab = 2; voiceSection = 1
+                    vm.message.value = "Created $name. Import its Lorebook here. When ready, link the named story in NovelAI; its voice cast will stay separate."
+                }
+            }, enabled = newStoryProfileName.isNotBlank()) { Text("Create profile") } },
+            dismissButton = { TextButton(onClick = { showCreateStoryProfile = false }) { Text("Cancel") } }
+        )
         if (showImportChoice) {
             val target = castBooks.firstOrNull { it.id == lorebookBook }?.title ?: "this book"
             AlertDialog(onDismissRequest = { showImportChoice = false; lorebookBook = null; lorebookDraft = null },
