@@ -48,8 +48,10 @@ CI fetches the pinned AAR with SHA-256 verification before building.
 Upstream library: https://github.com/k2-fsa/sherpa-onnx
 Model source: https://huggingface.co/csukuangfj/kokoro-int8-multi-lang-v1_0
 
-## Still to verify on a real phone
+## Device validation
 
-The code and compilation tests do not verify actual model loading and speech.
-Before merging, test speech output with a real downloaded model, assigned
-speaker IDs, memory use, and Android pause/resume.
+The combined Story Preview has loaded the official model and generated distinct
+Bella, Puck and George audio on a Pixel 10 Pro XL through the production speech
+path. See [the verification record and remaining limits](STORY-PREVIEW-0.3.28.md).
+Long-session playback, battery behavior and subjective listening quality still
+need separate checks.

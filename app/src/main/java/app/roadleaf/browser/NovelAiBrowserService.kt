@@ -288,10 +288,11 @@ class NovelAiBrowserService : AccessibilityService() {
         val editor = try { BrowserEditorNodes.focusedEditor(root) } catch (error: Exception) { message(error.message.orEmpty()); return } finally { root.recycle() }
         val text = try { BrowserEditorNodes.text(editor) } catch (error: Exception) { editor.recycle(); message(error.message.orEmpty()); return }
         // Use a real selection, never an old insertion caret left elsewhere in the manuscript.
-        val selected = if (fromSelection && editor.textSelectionEnd > editor.textSelectionStart)
-            editor.textSelectionStart else -1
         val raw = editor.text?.toString().orEmpty()
-        val visible = if (fromVisibleTop) BrowserEditorNodes.firstVisibleOffset(editor) else null
+        val selected = if (fromSelection) BrowserStory.selectionOffset(raw, editor.textSelectionStart, editor.textSelectionEnd) else null
+        val display = resources.displayMetrics
+        val visible = if (fromVisibleTop) BrowserEditorNodes.firstVisibleOffset(editor,
+            android.graphics.Rect(0, 0, display.widthPixels, display.heightPixels)) else null
         val caret = when { fromSelection -> selected; fromVisibleTop -> visible; else -> null }
         val cursor = caret?.takeIf { it >= 0 }?.let { atRaw ->
             val at = if (fromVisibleTop) atRaw else BrowserStory.offsetOf(raw, atRaw)
@@ -315,6 +316,12 @@ class NovelAiBrowserService : AccessibilityService() {
                 val configured = app.browserSession.value?.takeIf { it.pinnedBook && !it.temporary }
                 // An explicit setup choice still goes through capture's same-story/replacement guard.
                 val saved = configured?.let { app.dao.book(it.bookId) } ?: linked
+                if (configured != null && saved != null && address != null &&
+                    BrowserStory.storyKey(saved.sourceUrl.orEmpty()) != null && BrowserStory.storyKey(address) != null) {
+                    require(BrowserStory.sameStory(saved.sourceUrl.orEmpty(), address)) {
+                        "This tab contains a different NovelAI story. Open the story linked to this profile before reading."
+                    }
+                }
                 var temporary = saved == null && configured == null
                 var begin = start
                 var offset = cursor ?: -1

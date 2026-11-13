@@ -12,7 +12,7 @@ import android.view.accessibility.AccessibilityEvent
 /** Owner-requested live editor inspection: reports only metadata, never its story text. */
 @Suppress("DEPRECATION")
 class BrowserEditorProbe(private val instrumentation: Instrumentation, private val report: MutableList<String>) {
-    fun run(webApp: Boolean = false) {
+    fun run(webApp: Boolean = false, selectionCheck: Boolean = false) {
         val automation = instrumentation.getUiAutomation(android.app.UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
         val gate = WebAppWindowGate()
         if (webApp) {
@@ -51,7 +51,34 @@ class BrowserEditorProbe(private val instrumentation: Instrumentation, private v
             }
             visit(root, 0)
             val editor = BrowserEditorNodes.focusedEditor(root)
-            try { report.add("PASS focused web editor exposes ${BrowserEditorNodes.text(editor).length} readable characters; no page/sidebar text collected") } finally { editor.recycle() }
+            try {
+                report.add("PASS focused web editor exposes ${BrowserEditorNodes.text(editor).length} readable characters; no page/sidebar text collected")
+                val display = instrumentation.targetContext.resources.displayMetrics
+                val visible = BrowserEditorNodes.firstVisibleOffset(editor, android.graphics.Rect(0, 0, display.widthPixels, display.heightPixels))
+                report.add("Position metadata: selection=${editor.textSelectionStart}..${editor.textSelectionEnd}; characterLocations=${editor.availableExtraData?.contains(AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY) == true}; visibleOffset=$visible")
+                report.add("Direct story ID exposed in native address=${BrowserEditorNodes.address(root)?.let { app.roadleaf.browser.BrowserStory.storyKey(it) != null } == true}")
+                if (selectionCheck) {
+                    val oldStart = editor.textSelectionStart
+                    val oldEnd = editor.textSelectionEnd
+                    val raw = editor.text.toString()
+                    val start = (visible ?: oldStart.coerceAtLeast(0)).coerceAtMost(raw.length - 2)
+                    fun select(from: Int, to: Int) = editor.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION,
+                        android.os.Bundle().apply {
+                            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, from)
+                            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, to)
+                        })
+                    try {
+                        check(select(start, minOf(start + 12, raw.length))) { "Chrome rejected text selection" }
+                        Thread.sleep(350)
+                        check(editor.refresh())
+                        val selected = app.roadleaf.browser.BrowserStory.selectionOffset(raw, editor.textSelectionStart, editor.textSelectionEnd)
+                        check(selected == start) { "Chrome did not expose the selected range" }
+                        report.add("PASS live highlighted range exposes a valid start offset=$selected; manuscript text unchanged")
+                    } finally {
+                        if (oldStart in 0..raw.length && oldEnd in 0..raw.length) select(oldStart, oldEnd)
+                    }
+                }
+            } finally { editor.recycle() }
         } finally { root.recycle(); automation.setOnAccessibilityEventListener(null) }
     }
 }

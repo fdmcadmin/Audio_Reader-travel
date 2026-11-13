@@ -15,4 +15,7 @@ signing/
 *.apk
 *.aab
 app/libs/*.aar
+build-validation.log
+browser-probe-build.log
+final-label-build.log
 !app/src/test/resources/*.epub

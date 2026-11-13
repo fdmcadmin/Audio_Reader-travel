@@ -8,6 +8,23 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class BrowserStoryTest {
+    @Test fun browserIdsProtectConfiguredProfilesAcrossTabs() {
+        val first = "https://novelai.net/stories?id=story-one"
+        assertTrue(BrowserStory.sameStory(first, "novelai.net/stories?id=story-one"))
+        assertTrue(BrowserStory.sameStory(first, "https://www.novelai.net/stories/story-one"))
+        assertFalse(BrowserStory.sameStory(first, "https://novelai.net/stories?id=story-two"))
+        assertFalse(BrowserStory.sameStory(first, "https://other.example/stories?id=story-one"))
+        assertFalse(BrowserStory.sameStory("https://novelai.net/stories", "https://novelai.net/stories"))
+    }
+    @Test fun highlightsSupportBothDirectionsAndRejectStaleCarets() {
+        val text = "First line.\r\nSecond line."
+        assertEquals(13, BrowserStory.selectionOffset(text, 13, 19))
+        assertEquals(13, BrowserStory.selectionOffset(text, 19, 13))
+        assertEquals(12, BrowserStory.offsetOf(text, 13))
+        assertNull(BrowserStory.selectionOffset(text, 13, 13))
+        assertNull(BrowserStory.selectionOffset(text, -1, 13))
+        assertNull(BrowserStory.selectionOffset(text, 13, 100))
+    }
     @Test fun linkedStoryMustMatchSavedTextRatherThanLastBookOrCharacterNames() {
         val saved = "An original traveller crossed a quiet valley and met a guide.\n"
         val other = "A different tale has the same guide but begins in another village.\n"

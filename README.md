@@ -55,7 +55,7 @@ Open this folder in Android Studio with Java 17, SDK platform 35 and build tools
 
 On Windows, `scripts/Build-Local.ps1` finds portable Java and SDK tools placed beside the project, or takes `-JavaHome` and `-SdkRoot`. Its optional `-UseWindowsTrust` switch makes Java use Windows' trusted root certificates for that build; it does not disable HTTPS checks or change system certificates.
 
-For testing on a phone, install **`app/build/outputs/apk/compact/app-compact.apk`**. R8 removes unused code and resources, and debugging is disabled. It uses the development signing key and the `.debug` application ID, so a locally built compact APK updates an earlier local build without deleting its library. `app/build/outputs/apk/debug/app-debug.apk` is the larger development build. The two variants replace one another on a phone. Neither is a production build signed with a release key.
+On this experimental branch, **`app/build/outputs/apk/compact/app-compact.apk`** installs as **Roadleaf Story Preview** (`app.roadleaf.storypreview`). It keeps the existing Roadleaf installation and library separate. The instrumented development APK uses `app.roadleaf.storypreview.dev`, so device tests also stay separate. Neither is a production release. See [Story Preview 0.3.28 setup and validation](docs/STORY-PREVIEW-0.3.28.md).
 
 ## Using it
 

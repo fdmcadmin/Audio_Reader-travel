@@ -15,6 +15,17 @@ import java.util.UUID
  * Archive paths and extracted bytes are bounded to avoid traversal and storage abuse.
  */
 internal object KokoroModelImport {
+    internal fun relativePath(name: String, directory: Boolean): String? {
+        val normalized = name.removePrefix("./")
+        val prefix = "kokoro-int8-multi-lang-v1_0/"
+        if (!normalized.startsWith(prefix)) return null
+        val path = normalized.removePrefix(prefix).let { if (directory) it.removeSuffix("/") else it }
+        if (path.isEmpty()) return null
+        require('\\' !in path && path.split('/').none { it == ".." || it == "." || it.isBlank() }) {
+            "An invalid model file path was rejected."
+        }
+        return path
+    }
     suspend fun install(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
         val root = File(context.filesDir, "kokoro-stage-" + UUID.randomUUID()).apply { mkdirs() }
         val target = NativeKokoro.folder(context)
@@ -29,14 +40,7 @@ internal object KokoroModelImport {
                         count++
                         require(count <= 4_000) { "Too many files in the voice model archive." }
                         require(!item.isSymbolicLink && !item.isLink) { "Linked files are not allowed in a model archive." }
-                        val normalized = item.name.removePrefix("./")
-                        val prefix = "kokoro-int8-multi-lang-v1_0/"
-                        if (!normalized.startsWith(prefix)) continue
-                        val path = normalized.removePrefix(prefix)
-                        if (path.isBlank()) continue
-                        require(path.split('/').none { it == ".." || it == "." || it.isBlank() }) {
-                            "An invalid model file path was rejected."
-                        }
+                        val path = relativePath(item.name, item.isDirectory) ?: continue
                         val file = File(root, path)
                         require(file.canonicalPath.startsWith(root.canonicalPath + File.separator)) {
                             "A model file tried to escape the selected directory."

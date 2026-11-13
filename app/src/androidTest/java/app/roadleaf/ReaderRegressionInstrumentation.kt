@@ -46,6 +46,7 @@ class ReaderRegressionInstrumentation : Instrumentation() {
     private var musicChecks = false
     private var paragraphChecks = false
     private var browserProbe = false
+    private var browserSelectionProbe = false
     private var browserChecks = false
     private var webAppProbe = false
     private var quickReadChecks = false
@@ -53,7 +54,8 @@ class ReaderRegressionInstrumentation : Instrumentation() {
     private var bubblePauseMs = 0L
     private var handoffChecks = false
     private var tabChecks = false
-    override fun onCreate(arguments: Bundle?) { super.onCreate(arguments); bubbleChecks = arguments?.getString("bubbleChecks") == "true"; handoffChecks = arguments?.getString("handoffChecks") == "true"; tabChecks = arguments?.getString("tabChecks") == "true"; bubblePauseMs = arguments?.getString("bubblePauseMs")?.toLongOrNull() ?: 0L; quickReadChecks = arguments?.getString("quickReadChecks") == "true"; webAppProbe = arguments?.getString("browserWebApp") == "true"; browserChecks = arguments?.getString("browserChecks") == "true"; browserProbe = arguments?.getString("browserProbe") == "true"; paragraphChecks = arguments?.getString("paragraphChecks") == "true"; musicChecks = arguments?.getString("musicChecks") == "true"; liveProbeUrl = arguments?.getString("liveUrl"); focusChecks = arguments?.getString("focusChecks") == "true"; preparationChecks = arguments?.getString("preparationChecks") == "true"; websiteChecks = arguments?.getString("websiteChecks") == "true"; chapterChecks = arguments?.getString("chapterChecks") == "true"; adaptiveChecks = arguments?.getString("adaptiveChecks") == "true"; fullChapter = arguments?.getString("fullChapter") == "true"; recoveryChecks = arguments?.getString("recoveryChecks") == "true"; outputChecks = arguments?.getString("outputChecks") == "true"; universalChecks = arguments?.getString("universalChecks") == "true"; castChecks = arguments?.getString("castChecks") == "true"; start() }
+    private var kokoroChecks = false
+    override fun onCreate(arguments: Bundle?) { super.onCreate(arguments); browserSelectionProbe = arguments?.getString("browserSelectionProbe") == "true"; kokoroChecks = arguments?.getString("kokoroChecks") == "true"; bubbleChecks = arguments?.getString("bubbleChecks") == "true"; handoffChecks = arguments?.getString("handoffChecks") == "true"; tabChecks = arguments?.getString("tabChecks") == "true"; bubblePauseMs = arguments?.getString("bubblePauseMs")?.toLongOrNull() ?: 0L; quickReadChecks = arguments?.getString("quickReadChecks") == "true"; webAppProbe = arguments?.getString("browserWebApp") == "true"; browserChecks = arguments?.getString("browserChecks") == "true"; browserProbe = arguments?.getString("browserProbe") == "true"; paragraphChecks = arguments?.getString("paragraphChecks") == "true"; musicChecks = arguments?.getString("musicChecks") == "true"; liveProbeUrl = arguments?.getString("liveUrl"); focusChecks = arguments?.getString("focusChecks") == "true"; preparationChecks = arguments?.getString("preparationChecks") == "true"; websiteChecks = arguments?.getString("websiteChecks") == "true"; chapterChecks = arguments?.getString("chapterChecks") == "true"; adaptiveChecks = arguments?.getString("adaptiveChecks") == "true"; fullChapter = arguments?.getString("fullChapter") == "true"; recoveryChecks = arguments?.getString("recoveryChecks") == "true"; outputChecks = arguments?.getString("outputChecks") == "true"; universalChecks = arguments?.getString("universalChecks") == "true"; castChecks = arguments?.getString("castChecks") == "true"; start() }
     private fun <T> main(action: () -> T): T {
         val result = AtomicReference<Result<T>>()
         runOnMainSync { result.set(runCatching(action)) }
@@ -100,7 +102,8 @@ class ReaderRegressionInstrumentation : Instrumentation() {
         val app = targetContext.applicationContext as RoadleafApp
         val report = mutableListOf<String>()
         try { runBlocking {
-            if (browserProbe) { BrowserEditorProbe(this@ReaderRegressionInstrumentation, report).run(webAppProbe); return@runBlocking }
+            if (kokoroChecks) { KokoroStoryChecks(app, report).run(); return@runBlocking }
+            if (browserProbe) { BrowserEditorProbe(this@ReaderRegressionInstrumentation, report).run(webAppProbe, browserSelectionProbe); return@runBlocking }
             if (websiteChecks) { WebsiteLibraryChecks(this@ReaderRegressionInstrumentation, report).run(); return@runBlocking }
             if (castChecks) { CastFileChecks(app, report).run(); return@runBlocking }
             if (recoveryChecks) { SpeechRecoveryChecks(this@ReaderRegressionInstrumentation, app, report).run(); return@runBlocking }

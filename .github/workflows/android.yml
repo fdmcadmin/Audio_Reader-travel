@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
-    # Runs in private and public repositories. APKs are uploaded only for main pushes and manual runs.
+    # Runs in private and public repositories; own-repository PRs can expose their isolated preview artifacts.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -33,7 +33,7 @@ jobs:
             -o app/libs/sherpa-onnx-2.0.1.aar
           echo "a8d09d1d32f3eb8520482c6d3d43fae674681c5b050385967c70a3c2c9bf0ee7  app/libs/sherpa-onnx-2.0.1.aar" | sha256sum -c -
       - run: chmod +x gradlew
-      - run: ./gradlew assembleCompact --no-daemon
+      - run: ./gradlew testDebugUnitTest lintDebug lintCompact assembleCompact assembleDebugAndroidTest --no-daemon
       - name: Verify test APKs and write checksums
         shell: bash
         run: |
@@ -43,7 +43,7 @@ jobs:
             sha256sum "$apk" > "$apk.sha256"
           done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: github.event_name != 'pull_request' || github.head_ref == 'codex/android-scene-voices-story-isolation' || github.head_ref == 'codex/native-sherpa-kokoro-multivoice'
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         with:
           name: roadleaf-debug
           path: |

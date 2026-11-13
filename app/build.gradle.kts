@@ -14,6 +14,7 @@ android {
         versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 31
         versionName = "0.3.28"
         manifestPlaceholders["roadleafAppLabel"] = "Roadleaf"
+        manifestPlaceholders["roadleafBrowserLabel"] = "Roadleaf browser reader"
         testInstrumentationRunner = "app.roadleaf.ReaderRegressionInstrumentation"
     }
     signingConfigs {
@@ -42,6 +43,7 @@ android {
             applicationIdSuffix = ".storypreview"
             versionNameSuffix = "-story-preview"
             manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Story Preview"
+            manifestPlaceholders["roadleafBrowserLabel"] = "Roadleaf Story Preview browser reader"
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
