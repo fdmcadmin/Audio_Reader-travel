@@ -39,7 +39,11 @@ internal data class Choice(val id: String, val title: String, val detail: String
     onApply: (ListeningSettings) -> Unit,
     onPreview: (ListeningSettings, String) -> Unit,
     onAndroidSettings: () -> Unit,
-    onMoreVoices: () -> Unit = {}
+    onMoreVoices: () -> Unit = {},
+    onImportKokoro: () -> Unit = {},
+    onDownloadKokoro: () -> Unit = {},
+    kokoroInstalled: Boolean = false,
+    kokoroImportBusy: Boolean = false
 ) {
     var draft by remember(settings) { mutableStateOf(settings) }
     var previewText by remember { mutableStateOf("The road unfolds before us. A new chapter begins, with dragons beyond the horizon.") }
@@ -48,6 +52,15 @@ internal data class Choice(val id: String, val title: String, val detail: String
         Text("Choose from offline voices installed on this phone. Voice quality and accents depend on your speech engine.", style = MaterialTheme.typography.bodyMedium)
         val engines = listOf(Choice("", "Android default")) + catalog?.engines.orEmpty().map { Choice(it.packageName, it.label) }
         ChoicePicker("Speech engine", draft.enginePackage, engines, !busy) { id -> draft = draft.copy(enginePackage = id, voiceName = ""); onRefresh(id) }
+        if (draft.enginePackage == NativeKokoro.ENGINE_ID) {
+            Text(if (kokoroInstalled) "Kokoro v1.0 model installed • 28 independent English voices • works without internet."
+                 else "Native Kokoro needs a one-time model download (about 140–190 MB). You can import it from Downloads; the model remains offline afterward.",
+                 style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = onDownloadKokoro, enabled = !kokoroImportBusy) { Text("1 · Download official Kokoro INT8 v1.0 model") }
+            OutlinedButton(onClick = onImportKokoro, enabled = !kokoroImportBusy, modifier = Modifier.fillMaxWidth()) {
+                Text(if (kokoroImportBusy) "Importing model…" else "2 · Import downloaded Kokoro model archive")
+            }
+        }
         val catalogMatches = catalog != null && (draft.enginePackage.isBlank() || catalog.enginePackage == draft.enginePackage)
         val voices = if (catalogMatches) catalog!!.voices else emptyList()
         val locales = (voices.map { it.localeTag } + draft.localeTag).distinct().sortedBy { Locale.forLanguageTag(it).displayName }
@@ -60,10 +73,10 @@ internal data class Choice(val id: String, val title: String, val detail: String
         ChoicePicker("Voice", draft.voiceName, voiceChoices, !busy && catalogMatches) { draft = draft.copy(voiceName = it) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { onRefresh(draft.enginePackage) }, enabled = !busy && canControl) { Text(if (busy) "Loading voices…" else "Refresh voices") }
-            TextButton(onClick = onAndroidSettings) { Text("Install / manage voices") }
+            if (draft.enginePackage != NativeKokoro.ENGINE_ID) TextButton(onClick = onAndroidSettings) { Text("Install / manage voices") }
         }
         TextButton(onClick = onMoreVoices) { Text("Where to get more voices") }
-        if (catalogMatches && voices.isEmpty()) Text("No installed offline voices found. Install voice data in Android settings, then refresh.")
+        if (catalogMatches && voices.isEmpty()) Text(if (draft.enginePackage == NativeKokoro.ENGINE_ID) "Import the Kokoro model archive above, then Refresh voices." else "No installed offline voices found. Install voice data in Android settings, then refresh.")
         Text("Speed ${String.format(Locale.ROOT, "%.2f", draft.speed)}×")
         Slider(value = draft.speed, onValueChange = { draft = draft.copy(speed = it) }, valueRange = 0.65f..2f, steps = 26)
         Text("Pitch ${String.format(Locale.ROOT, "%.2f", draft.pitch)} • lower ↔ higher")
@@ -78,13 +91,15 @@ internal data class Choice(val id: String, val title: String, val detail: String
         OutlinedTextField(previewText, { previewText = it.take(240) }, label = { Text("Preview text") }, modifier = Modifier.fillMaxWidth(), maxLines = 3)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { onPreview(draft.normalized(), previewText) }, enabled = canControl && !busy, modifier = Modifier.weight(1f)) { Text("Preview") }
-            Button(onClick = { onApply(draft.normalized()) }, enabled = canControl && !busy, modifier = Modifier.weight(1f)) { Text("Save & apply") }
+            Button(onClick = { onApply(draft.normalized()) }, enabled = canControl && !busy && (draft.enginePackage != NativeKokoro.ENGINE_ID || kokoroInstalled), modifier = Modifier.weight(1f)) { Text("Save & apply") }
         }
         Text("Preview pauses your book. Resume it from Library. For web reading, choose Read chapter again after changing the voice or pronunciations.", style = MaterialTheme.typography.bodySmall)
     }
 }
 
-internal fun voiceLabel(name: String, engine: String): String = if (engine == "com.brahmadeo.supertonic.tts") when (name) {
+internal fun voiceLabel(name: String, engine: String): String = if (engine == NativeKokoro.ENGINE_ID) {
+    NativeKokoro.speakerName(name)?.replace("_", " ")?.replaceFirstChar { it.uppercase() } ?: name
+} else if (engine == "com.brahmadeo.supertonic.tts") when (name) {
     "en-supertonic-M2" -> "James • Deep, calm"
     "en-supertonic-M5" -> "Daniel • Warm, soothing"
     "en-supertonic-M1" -> "Alex • Lively, upbeat"
