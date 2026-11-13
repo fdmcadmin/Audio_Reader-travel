@@ -297,7 +297,7 @@ class NovelAiBrowserService : AccessibilityService() {
             val at = if (fromVisibleTop) atRaw else BrowserStory.offsetOf(raw, atRaw)
             val bounded = at.coerceIn(0, text.length - 1)
             StartPoint.word(text, bounded)?.first ?: bounded
-        } else null
+        }
         if ((fromSelection || fromVisibleTop) && cursor == null) {
             editor.recycle()
             message(if (fromSelection) "Highlight text in the story box, then tap Read selection."
