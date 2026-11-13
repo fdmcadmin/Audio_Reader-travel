@@ -29,7 +29,7 @@ object SceneCast {
                 val text = part.text.take(offset - part.offset)
                 var at = 0
                 for (boundary in breaks.findAll(text)) {
-                    state = DialogueState(sceneNames = names(prepared, boundary.value), sceneExplicit = explicit(boundary.value))
+                    state = DialogueState(sceneNames = names(cast, boundary.value), sceneExplicit = explicit(boundary.value))
                     at = boundary.range.last + 1
                 }
                 if (!state.sceneExplicit) state = state.copy(sceneNames = (state.sceneNames + names(cast, text.substring(at))).take(65).toSet())
