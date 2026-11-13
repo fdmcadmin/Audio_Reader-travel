@@ -39,6 +39,11 @@ class NovelAiBrowserActivity : ComponentActivity() {
         val requestedTitle = intent?.getStringExtra("novelAiStoryTitle").orEmpty()
         var selected by rememberSaveable { mutableStateOf(requestedStory.ifBlank { session?.takeUnless { it.temporary }?.bookId ?: app.browserReader.lastBook }) }
         var title by rememberSaveable { mutableStateOf(requestedTitle.ifBlank { session?.takeUnless { it.temporary }?.title ?: app.browserReader.lastTitle }) }
+        var storyUrl by rememberSaveable { mutableStateOf("") }
+        LaunchedEffect(selected, books) {
+            if (storyUrl.isBlank()) storyUrl = books.firstOrNull { it.id == selected }?.sourceUrl
+                ?.takeIf(BrowserStory::storyAddress).orEmpty()
+        }
         // URL handlers such as remote-control apps are not real browsers.
         val installedBrowsers = remember { BrowserApps.installed(this).filter { it.packageName in BrowserApps.known } }
         var browser by rememberSaveable { mutableStateOf(
@@ -93,23 +98,29 @@ class NovelAiBrowserActivity : ComponentActivity() {
             if (novelAi) {
             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("NovelAI · read your stories", style = MaterialTheme.typography.titleMedium)
-                Text("1. Turn on the browser reader above.\n2. Open NovelAI in your browser and open your story.\n3. Tap inside your story box, tap the Roadleaf bubble, then From top or Resume.\n4. New text is read as NovelAI writes it. When the reading catches up, generate more, then press Play or Resume.")
-                OutlinedButton(onClick = { runCatching { startActivity(Intent(Intent.ACTION_VIEW, "https://novelai.net/stories".toUri()).setPackage(browser)) }.onFailure { app.browserStatus.value = app.browserStatus.value.copy(message = "Cannot open NovelAI in this browser. Choose Chrome or another supported browser.") } }, enabled = browser.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Open NovelAI in browser") }
+                Text("1. Turn on the browser reader above.\n2. Save this story and its exact NovelAI address below.\n3. Open the story, highlight a passage or scroll to your start, then use the Roadleaf bubble.\n4. New text is read as NovelAI writes it.")
+                val direct = storyUrl.trim().takeIf(BrowserStory::storyAddress)
+                    ?: books.firstOrNull { it.id == selected }?.sourceUrl?.takeIf(BrowserStory::storyAddress)
+                OutlinedButton(onClick = { runCatching { startActivity(Intent(Intent.ACTION_VIEW, requireNotNull(direct).toUri()).setPackage(browser)) }.onFailure { app.browserStatus.value = app.browserStatus.value.copy(message = "Cannot open this story in the chosen browser. Check its exact NovelAI address.") } }, enabled = browser.isNotBlank() && direct != null, modifier = Modifier.fillMaxWidth()) { Text("Open this NovelAI story") }
+                if (direct == null) Text("Paste this manuscript's own NovelAI address below to enable its direct shortcut.", style = MaterialTheme.typography.bodySmall)
                 Text("You can return to your already-open tab instead. Android may open another tab with the same browser sign-in.", style = MaterialTheme.typography.bodySmall)
             } } }
             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
                 Text("NovelAI controls", style = MaterialTheme.typography.titleMedium)
-                Text("From top starts at the first paragraph. Resume continues where you stopped, including new text. Stories not saved to Library stay out of it. Check collection looks for Roadleaf voice profiles linked to the same saved text; it never opens or imports a full NovelAI lorebook.")
+                Text("From top, Resume, Read selection, and Visible top start where you choose. Check collection looks for Roadleaf voice profiles linked to this saved text; it never imports the full NovelAI lorebook.")
                 Text("Name a new manuscript below or choose a previously saved one. Each named manuscript has its own voice cast and reading position; NovelAI’s general /stories address cannot distinguish them.", style = MaterialTheme.typography.bodySmall)
             } } }
             item { Text("Name or select this NovelAI manuscript", style = MaterialTheme.typography.titleMedium)
                 Box { OutlinedButton(onClick = { menu = true }) { Text(books.firstOrNull { it.id == selected }?.title ?: "New browser story") }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        DropdownMenuItem(text = { Text("New browser story") }, onClick = { selected = ""; title = ""; replace = false; menu = false })
-                        books.forEach { book -> DropdownMenuItem(text = { Text(book.title) }, onClick = { selected = book.id; title = book.title; replace = false; menu = false }) }
+                        DropdownMenuItem(text = { Text("New browser story") }, onClick = { selected = ""; title = ""; storyUrl = ""; replace = false; menu = false })
+                        books.forEach { book -> DropdownMenuItem(text = { Text(book.title) }, onClick = { selected = book.id; title = book.title; storyUrl = book.sourceUrl?.takeIf(BrowserStory::storyAddress).orEmpty(); replace = false; menu = false }) }
                     }
                 }
                 if (books.none { it.id == selected }) OutlinedTextField(title, { title = it.take(160) }, label = { Text("Your story title") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(storyUrl, { storyUrl = it.take(2048) }, label = { Text("Exact NovelAI story address (optional until known)") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    isError = storyUrl.isNotBlank() && !BrowserStory.storyAddress(storyUrl))
+                if (storyUrl.isNotBlank() && !BrowserStory.storyAddress(storyUrl)) Text("Use this story's own NovelAI address with its id= value.", color = MaterialTheme.colorScheme.error)
             }
             item { Text("Browser for NovelAI", style = MaterialTheme.typography.titleMedium)
                 Box { OutlinedButton(onClick = { browserMenu = true }, enabled = installedBrowsers.isNotEmpty()) { Text(installedBrowsers.firstOrNull { it.packageName == browser }?.label ?: "No supported browser found") }
@@ -135,7 +146,8 @@ class NovelAiBrowserActivity : ComponentActivity() {
                     lifecycleScope.launch {
                         try {
                             if (existing == null) app.dao.insertBook(
-                                Book(id, name, "Personal NovelAI story", BrowserStory.SOURCE, "https://novelai.net/stories"))
+                                Book(id, name, "Personal NovelAI story", BrowserStory.SOURCE, storyUrl.trim().ifBlank { "https://novelai.net/stories" }))
+                            else if (storyUrl.isNotBlank()) app.dao.updateNovelAiStoryUrl(id, storyUrl.trim())
                             selected = id
                             title = name
                             if (browser.isNotBlank()) {
@@ -149,14 +161,14 @@ class NovelAiBrowserActivity : ComponentActivity() {
                             app.browserStatus.value = current.copy(message = when {
                                 !current.connected -> "Saved '$name' separately. Import its Lorebook under Voice > Characters. To read from NovelAI, first enable Roadleaf Story Preview's browser reader in Android Accessibility."
                                 browser.isBlank() -> "Saved '$name' separately. Choose a supported browser before reading NovelAI."
-                                else -> "Saved '$name'. Open its manuscript in your selected browser, tap the editor, then tap From top on the Roadleaf bubble."
+                                else -> "Saved '$name'. Open its direct shortcut if an exact address was provided, then use the Roadleaf bubble."
                             })
                         } catch (error: Exception) {
                             app.browserStatus.value = app.browserStatus.value.copy(
                                 message = "Could not save the story: " + (error.message ?: "unknown error"))
                         }
                     }
-                }, enabled = title.isNotBlank(), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                }, enabled = title.isNotBlank() && (storyUrl.isBlank() || BrowserStory.storyAddress(storyUrl)), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                     Text(if (books.any { it.id == selected }) "Select this saved story for reading" else "Save named NovelAI story")
                 }
                 if (!status.connected) Text("You can save its name and Lorebook now. To capture text, enable Roadleaf Story Preview's Accessibility browser reader.", style = MaterialTheme.typography.bodySmall)
