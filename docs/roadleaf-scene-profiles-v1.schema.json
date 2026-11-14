@@ -74,7 +74,7 @@
             "required": ["service", "model", "voice", "sid"],
             "properties": {
               "service": { "const": "sherpa-onnx" },
-              "model": { "enum": ["kokoro-multi-lang-v1_0", "kokoro-int8-multi-lang-v1_0"] },
+              "model": { "enum": ["kokoro-multi-lang-v1_0", "kokoro-int8-multi-lang-v1_0", "kokoro-multi-lang-v1_1", "kokoro-int8-multi-lang-v1_1"] },
               "voice": { "type": "string", "minLength": 1, "maxLength": 160 },
               "sid": { "type": "integer", "minimum": 0, "maximum": 27 }
             }

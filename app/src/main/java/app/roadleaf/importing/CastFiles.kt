@@ -29,7 +29,7 @@ object CastFiles {
 
     /** The merged cast to save, how many characters the file supplied and how many it described. */
     data class Imported(val kind: Kind, val cast: BookVoiceCast, val characters: Int, val found: Int, val engine: String = "",
-        val taggedVoices: Int = 0)
+        val taggedVoices: Int = 0, val correctedModelLabels: Int = 0)
 
     fun read(json: String, existing: BookVoiceCast): Imported {
         require(json.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Choose a cast or lorebook file under 4 MB." }
@@ -38,7 +38,8 @@ object CastFiles {
         return when {
             root.optString("format") == FORMAT -> readCast(root, existing)
             root.optString("format") == "roadleaf-scene-profiles" -> CharacterLorebook.decode(json).let { profiles ->
-                Imported(Kind.PROFILES, CharacterLorebook.merge(existing, profiles), profiles.characters.size, profiles.characters.size, profiles.engine)
+                Imported(Kind.PROFILES, CharacterLorebook.merge(existing, profiles), profiles.characters.size, profiles.characters.size,
+                    profiles.engine, profiles.characters.count { it.voice.isNotBlank() }, profiles.correctedModelLabels)
             }
             novelAi != null -> lorebook(Kind.NOVELAI, novelAiEntries(novelAi), existing)
             root.optString("spec").startsWith("chara_card") || root.has("first_mes") && root.has("name") -> lorebook(Kind.CARD, cardEntries(root), existing)
@@ -109,13 +110,15 @@ object CastFiles {
         }
         val byId = entries.filter { it.enabled && it.voiceTag != null && it.id.isNotBlank() }.associateBy { it.id }
         var tagged = 0
+        var corrected = 0
         val voiced = result.characters.map { character ->
             val tag = byId[character.profileId]?.voiceTag ?: return@map character
             tagged++
+            if (NativeKokoro.correctedV11Label(tag.model)) corrected++
             character.copy(role = CastRole.CUSTOM, voice = NativeKokoro.voiceIdForTag(tag.service, tag.model, tag.voice, tag.sid))
         }
         return Imported(kind, merge(existing, voiced), result.characters.size, result.found,
-            if (tagged > 0) NativeKokoro.ENGINE_ID else "", tagged)
+            if (tagged > 0) NativeKokoro.ENGINE_ID else "", tagged, corrected)
     }
 
     /** Adds new characters and fills nicknames and pronouns for known ones; voices already chosen stay. */

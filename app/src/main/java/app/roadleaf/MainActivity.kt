@@ -232,7 +232,10 @@ class MainActivity : ComponentActivity() {
                     append(". ")
                     if (imported.kind in setOf(CastFiles.Kind.NOVELAI, CastFiles.Kind.LOREBOOK, CastFiles.Kind.CARD))
                         append("Only names, nicknames, pronoun hints and ${imported.taggedVoices} validated voice tags were kept, not the lorebook text. ")
-                    if (imported.taggedVoices > 0) append("Character speed tags do not change playback speed. ")
+                    if (imported.correctedModelLabels > 0)
+                        append("${imported.correctedModelLabels} voice tags said Kokoro v1.1, but their speaker names and IDs match v1.0; Roadleaf used v1.0. ")
+                    if (imported.taggedVoices > 0 && imported.kind in setOf(CastFiles.Kind.NOVELAI, CastFiles.Kind.LOREBOOK, CastFiles.Kind.CARD))
+                        append("Character speed tags do not change playback speed. ")
                     if (catalog == null || installed.isEmpty()) append("Tap Refresh installed voices, then import again to give each character a voice.")
                     else {
                         append("${delegated.assigned} got an installed voice")

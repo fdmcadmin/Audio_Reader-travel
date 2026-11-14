@@ -38,11 +38,14 @@ internal class NativeKokoro(private val context: Context) {
             ?.takeIf { voice.startsWith(PREFIX) && it in ENGLISH.indices }
         fun voiceIdForSpeaker(name: String): String? = ENGLISH.indexOf(name.trim().lowercase(java.util.Locale.ROOT))
             .takeIf { it >= 0 }?.let { PREFIX + it }
+        fun correctedV11Label(model: String): Boolean = model in setOf("kokoro-multi-lang-v1_1", "kokoro-int8-multi-lang-v1_1")
         fun voiceIdForTag(service: String, model: String, name: String, sid: Int): String {
             require(service.equals("sherpa-onnx", true)) { "This lorebook's voice service is not supported by Roadleaf." }
-            require(model in setOf("kokoro-multi-lang-v1_0", "kokoro-int8-multi-lang-v1_0")) {
-                "The lorebook names model $model, but these speaker IDs require Kokoro v1.0. Correct the profile metadata before importing."
+            require(model in setOf("kokoro-multi-lang-v1_0", "kokoro-int8-multi-lang-v1_0") || correctedV11Label(model)) {
+                "Kokoro model $model is not supported by this reader."
             }
+            // A v1.1 label is accepted only when the speaker name and SID exactly match our
+            // v1.0 catalog. Actual v1.1 speakers have different names and are still rejected.
             val id = voiceIdForSpeaker(name) ?: error("Unknown English Kokoro speaker: $name")
             require(speakerId(id) == sid) { "Kokoro speaker name and ID disagree for $name." }
             return id

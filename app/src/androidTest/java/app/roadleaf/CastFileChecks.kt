@@ -40,8 +40,10 @@ class CastFileChecks(private val app: RoadleafApp, private val report: MutableLi
         check(tagged.engine == "roadleaf.native.kokoro" && tagged.taggedVoices == 2 &&
             tagged.cast.characters.map { it.voice } == listOf("kokoro:2", "kokoro:18"))
         check(!tagged.cast.toString().contains("Private fixture prose"))
-        check(runCatching { CastFiles.read(taggedLorebook.replace("v1_0", "v1_1"), BookVoiceCast()) }.isFailure)
-        report.add("PASS tagged lorebook characters retain distinct Kokoro v1.0 voices without story text; incorrect model labels are rejected")
+        val corrected = CastFiles.read(taggedLorebook.replace("v1_0", "v1_1"), BookVoiceCast())
+        check(corrected.correctedModelLabels == 2 && corrected.cast.characters.map { it.voice } == listOf("kokoro:2", "kokoro:18"))
+        check(runCatching { CastFiles.read(taggedLorebook.replace("af_bella", "af_maple").replace("v1_0", "v1_1"), BookVoiceCast()) }.isFailure)
+        report.add("PASS tagged lorebook characters retain distinct Kokoro voices; exact v1.0 speaker pairs correct a v1.1 label, while actual v1.1 speakers are rejected")
 
         val key = "https://tales.example/cast-check"
         val preferences = app.getSharedPreferences("voice-cast", 0)

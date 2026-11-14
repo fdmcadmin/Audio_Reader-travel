@@ -28,7 +28,8 @@ object CharacterLorebook {
     data class Header(val id: String, val name: String, val category: String = "", val enabled: Boolean = true, val keys: List<String> = emptyList(),
         val voice: String = "", val pronoun: CharacterPronoun = CharacterPronoun.AUTO, val delivery: CharacterDelivery = CharacterDelivery.FOLLOW_STORY)
     data class Profiles(val id: String, val characters: List<CastCharacter>, val engine: String = "", val mainCharacter: String = "",
-        val mainVoice: String = "", val narratorVoice: String = "", val mainPronoun: CharacterPronoun = CharacterPronoun.AUTO) {
+        val mainVoice: String = "", val narratorVoice: String = "", val mainPronoun: CharacterPronoun = CharacterPronoun.AUTO,
+        val correctedModelLabels: Int = 0) {
         val voices get() = (characters.map { it.voice } + mainVoice + narratorVoice).filter(String::isNotBlank).toSet()
     }
     fun parse(json: String): List<CastCharacter> = decode(json).characters
@@ -63,7 +64,9 @@ object CharacterLorebook {
                 item.optString("delivery", "FOLLOW_STORY").let { raw -> CharacterDelivery.entries.firstOrNull { it.name == raw } ?: error("Unknown character delivery.") })
         }), if (kokoro) NativeKokoro.ENGINE_ID else engine, root.optString("mainCharacter"),
             profileVoice(root.optString("mainVoice"), kokoro), profileVoice(root.optString("narratorVoice"), kokoro),
-            root.optString("mainPronoun", "AUTO").let { raw -> CharacterPronoun.entries.firstOrNull { it.name == raw } ?: error("Unknown main pronoun.") }).also {
+            root.optString("mainPronoun", "AUTO").let { raw -> CharacterPronoun.entries.firstOrNull { it.name == raw } ?: error("Unknown main pronoun.") },
+            (0 until entries.length()).count { i -> val item = entries.getJSONObject(i); item.optBoolean("enabled", true) &&
+                NativeKokoro.correctedV11Label(item.optJSONObject("ttsProfile")?.optString("model").orEmpty()) }).also {
             require(it.engine.length <= 160 && it.mainCharacter.length <= 240 && it.mainVoice.length <= 160 && it.narratorVoice.length <= 160) { "Keep voice settings short." }
         }
     }

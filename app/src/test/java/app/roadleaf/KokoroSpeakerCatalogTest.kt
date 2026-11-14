@@ -22,8 +22,18 @@ class KokoroSpeakerCatalogTest {
         assertEquals("kokoro:18", NativeKokoro.voiceIdForTag("sherpa-onnx", "kokoro-multi-lang-v1_0", "am_puck", 18))
         assertNotEquals(NativeKokoro.voiceIdForSpeaker("af_bella"), NativeKokoro.voiceIdForSpeaker("am_puck"))
     }
-    @Test(expected = IllegalArgumentException::class) fun v11LabelCannotSilentlyUseV10SpeakerIds() {
-        NativeKokoro.voiceIdForTag("sherpa-onnx", "kokoro-multi-lang-v1_1", "af_bella", 2)
+    @Test fun v11MislabelIsCorrectedOnlyForAnExactV10SpeakerPair() {
+        val taggedSpeakers = listOf(
+            "af_bella" to 2, "am_puck" to 18, "af_nova" to 7,
+            "am_liam" to 15, "af_kore" to 5, "am_onyx" to 17,
+        )
+        taggedSpeakers.forEach { (name, sid) ->
+            assertEquals("kokoro:$sid", NativeKokoro.voiceIdForTag("sherpa-onnx", "kokoro-multi-lang-v1_1", name, sid))
+        }
+        assertTrue(NativeKokoro.correctedV11Label("kokoro-multi-lang-v1_1"))
+    }
+    @Test(expected = IllegalStateException::class) fun anActualV11SpeakerCannotUseTheV10Catalog() {
+        NativeKokoro.voiceIdForTag("sherpa-onnx", "kokoro-multi-lang-v1_1", "af_maple", 0)
     }
     @Test(expected = IllegalArgumentException::class) fun speakerNameAndIdMustAgree() {
         NativeKokoro.voiceIdForTag("sherpa-onnx", "kokoro-multi-lang-v1_0", "af_bella", 18)

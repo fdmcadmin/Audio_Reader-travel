@@ -11,8 +11,8 @@ android {
         applicationId = "app.roadleaf"
         minSdk = 26
         targetSdk = 35
-        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 32
-        versionName = "0.3.29"
+        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 34
+        versionName = "0.3.30"
         manifestPlaceholders["roadleafAppLabel"] = "Roadleaf"
         manifestPlaceholders["roadleafBrowserLabel"] = "Roadleaf browser reader"
         testInstrumentationRunner = "app.roadleaf.ReaderRegressionInstrumentation"
