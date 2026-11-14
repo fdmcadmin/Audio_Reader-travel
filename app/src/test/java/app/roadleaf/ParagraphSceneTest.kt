@@ -57,6 +57,38 @@ class ParagraphSceneTest {
         assertTrue(next.utterances.any { it.voice == "casey" })
         assertFalse(next.utterances.any { it.voice == "mira" })
     }
+    @Test fun establishedViewpointNarratesLaterThirdAndSecondPersonParagraphs() {
+        val first = SceneCast.plan("[POV: Mira]\nMira walked onto the deck.", cast, DialogueState())
+        assertEquals("Mira", first.next.viewpoint)
+        assertFalse(first.utterances.joinToString("") { it.text }.contains("[POV:"))
+        assertTrue(first.utterances.any { it.voice == "mira" && "walked" in it.text })
+        val continued = SceneCast.plan("She watched the shore. You could feel the wind shift.", cast, first.next)
+        assertEquals("Mira", continued.next.viewpoint)
+        assertTrue(continued.utterances.all { it.voice == "mira" })
+        val changed = SceneCast.plan("\n***\nCasey entered the cabin. Casey paused at the door.", cast, continued.next)
+        assertEquals("Casey", changed.next.viewpoint)
+        assertTrue(changed.utterances.any { it.voice == "casey" })
+        val cleared = SceneCast.plan("\n---\nThe room was empty.", cast, changed.next)
+        assertEquals("", cleared.next.viewpoint)
+        assertTrue(cleared.utterances.all { it.voice == "narrator" })
+    }
+    @Test fun explicitCastKeepsItsVoiceDuringTheFirstAutomaticPassage() {
+        val profile = cast.copy(adaptive = true, profileSetId = "personal")
+        val adapted = AdaptiveCast.prepare(profile, LearnedCast(), AdaptiveVoices(), "chapter", 0, "[POV: Mira]\nMira entered.")
+        assertEquals("mira", adapted.cast.characters.first { it.name == "Mira" }.voice)
+        val spoken = SceneCast.plan("[POV: Mira]\nMira entered.", adapted.cast, DialogueState())
+        assertTrue(spoken.utterances.any { it.voice == "mira" })
+    }
+    @Test fun bareSecondPersonDoesNotInventACharacter() {
+        val spoken = SceneCast.plan("You could hear the surf.", cast, DialogueState())
+        assertEquals("", spoken.next.viewpoint)
+        assertTrue(spoken.utterances.all { it.voice == "narrator" })
+    }
+    @Test fun explicitViewpointRestoresFromSourceAfterRestart() {
+        val source = "[POV: Mira]\nMira walked to the beach.\n\nYou could hear the surf."
+        val state = SceneCast.before(cast, StringReader(source), source.indexOf("You could"))
+        assertEquals("Mira", state.viewpoint)
+    }
     @Test fun lookaheadCannotActivateACharacterInTheNextScene() {
         val plan = SceneCast.plan("A quiet empty room.", cast, DialogueState(), "\n---\nMira said, \"Hello.\"")
         assertFalse("mira" in plan.next.sceneNames)

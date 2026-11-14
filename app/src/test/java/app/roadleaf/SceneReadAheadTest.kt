@@ -35,6 +35,12 @@ class SceneReadAheadTest {
         assertEquals("Vesper", choice.viewpoint)
         assertEquals("vesper-voice", choice.cast.storyVoice)
     }
+    @Test fun repeatedThirdPersonActionsCanEstablishFocusButOneMentionCannot() {
+        val focus = SceneReadAhead.prepare(cast, "Vesper crossed the courtyard. Vesper paused by the gate.", DialogueState())
+        assertEquals("Vesper", focus.viewpoint)
+        assertEquals("vesper-voice", focus.cast.storyVoice)
+        assertEquals("", SceneReadAhead.prepare(cast, "Vesper crossed the courtyard.", DialogueState()).viewpoint)
+    }
 
     @Test fun disabledViewpointFeatureKeepsOriginalNarrator() {
         val choice = SceneReadAhead.prepare(cast.copy(followViewpoint = false), "[POV: Vesper]", DialogueState())

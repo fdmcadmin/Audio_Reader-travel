@@ -72,7 +72,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             ChoicePicker("Reading voices", mode, listOf(Choice("automatic", "Automatic · learn as I listen"), Choice("narrator", "Narrator only"), Choice("manual", "My assignments only"))) {
                 draft = draft.copy(enabled = it != "narrator", adaptive = it == "automatic")
             }
-            Text("Dialogue keeps each character’s assigned voice. Story narration can follow the chapter’s viewpoint, independently of the book’s main character. Uncertain speakers keep the narrator. Your assignments take priority.", style = MaterialTheme.typography.bodySmall)
+            Text("Dialogue keeps each character’s assigned voice. Narration follows a confirmed scene focus across second- or third-person paragraphs and clears at the next scene break. A lone pronoun or name does not choose a voice; uncertain passages use the narrator.", style = MaterialTheme.typography.bodySmall)
             ChoicePicker("Story narration", if (draft.followViewpoint) "viewpoint" else "narrator", listOf(Choice("viewpoint", "Follow chapter viewpoint"), Choice("narrator", "Narrator by default"))) {
                 draft = draft.copy(followViewpoint = it == "viewpoint")
             }
@@ -82,7 +82,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             if (chapter.isNotBlank()) ChoicePicker("This webpage chapter · ${chapter.substringAfterLast('/')}", draft.chapterViewpoints[chapter].orEmpty(), perspectiveChoices) { name ->
                 draft = draft.copy(chapterViewpoints = if (name.isBlank()) draft.chapterViewpoints - chapter else draft.chapterViewpoints + (chapter to name))
             }
-            Text("A confirmed chapter choice starts immediately. Automatic viewpoint needs repeated clear evidence in that chapter; it does not assume the MC narrates every chapter.", style = MaterialTheme.typography.bodySmall)
+            Text("A confirmed chapter choice starts immediately. Automatic scene focus needs a POV marker, thought cue or repeated focal actions; it never assumes the MC narrates every scene.", style = MaterialTheme.typography.bodySmall)
             draft.chapterViewpoints.forEach { (id, name) -> Row {
                 Text("${id.substringAfterLast('/')} · ${if (name == "@narrator") "Narrator" else name}", Modifier.weight(1f).padding(top = 12.dp), style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { draft = draft.copy(chapterViewpoints = draft.chapterViewpoints - id) }) { Text("Remove choice") }

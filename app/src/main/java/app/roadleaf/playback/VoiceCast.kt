@@ -24,7 +24,8 @@ data class BookVoiceCast(
     }
 }
 data class DialogueState(val closingQuote: Char? = null, val actor: String = "narrator", val lead: String = "", val pitchScale: Float = 1f,
-    val narrativeLead: String = "", val turnTail: String = "", val sceneNames: Set<String> = emptySet(), val sceneExplicit: Boolean = false)
+    val narrativeLead: String = "", val turnTail: String = "", val sceneNames: Set<String> = emptySet(), val sceneExplicit: Boolean = false,
+    val viewpoint: String = "")
 data class CastUtterance(val text: String, val voice: String = "", val pitchScale: Float = 1f)
 data class CastPlan(val utterances: List<CastUtterance>, val next: DialogueState)
 

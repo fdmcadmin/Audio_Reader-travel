@@ -41,9 +41,11 @@ class VoiceCastPreferences(context: Context) {
             val json = JSONObject(value.orEmpty()); DialogueState(json.optString("quote").firstOrNull(), json.optString("actor", "narrator"), json.optString("lead").takeLast(180),
                 json.optDouble("pitchScale", 1.0).toFloat().takeIf { it.isFinite() && it in 0.7f..1.3f } ?: 1f,
                 json.optString("narrativeLead").takeLast(720), json.optString("turnTail").takeLast(240),
-                json.optJSONArray("sceneNames")?.let { list -> (0 until minOf(65, list.length())).map { list.getString(it).take(80) }.toSet() }.orEmpty(), json.optBoolean("sceneExplicit"))
+                json.optJSONArray("sceneNames")?.let { list -> (0 until minOf(65, list.length())).map { list.getString(it).take(80) }.toSet() }.orEmpty(), json.optBoolean("sceneExplicit"),
+                json.optString("viewpoint").take(80))
         }.getOrDefault(DialogueState())
         fun encode(state: DialogueState) = JSONObject().put("quote", state.closingQuote?.toString().orEmpty()).put("actor", state.actor).put("lead", state.lead.takeLast(180)).put("pitchScale", state.pitchScale.toDouble())
-            .put("narrativeLead", state.narrativeLead.takeLast(720)).put("turnTail", state.turnTail.takeLast(240)).put("sceneNames", JSONArray(state.sceneNames.take(65))).put("sceneExplicit", state.sceneExplicit).toString()
+            .put("narrativeLead", state.narrativeLead.takeLast(720)).put("turnTail", state.turnTail.takeLast(240)).put("sceneNames", JSONArray(state.sceneNames.take(65))).put("sceneExplicit", state.sceneExplicit)
+            .put("viewpoint", state.viewpoint.take(80)).toString()
     }
 }

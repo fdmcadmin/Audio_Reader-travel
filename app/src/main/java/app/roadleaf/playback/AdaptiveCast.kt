@@ -105,7 +105,13 @@ object AdaptiveCast {
             bindings[index] = person
         }
         fun pronoun(person: LearnedCharacter?) = when (person?.gender) { LearnedGender.MALE -> CharacterPronoun.HE; LearnedGender.FEMALE -> CharacterPronoun.SHE; else -> CharacterPronoun.AUTO }
-        val active = if (prior.windows == 0) profile.copy(mainVoice = "", maleVoice = "", femaleVoice = "", characters = if (profile.sceneOnly) profile.characters.map { it.copy(role = CastRole.NARRATOR) } else emptyList(), storyVoice = ChapterPerspectives.voice(profile, prior, chapter))
+        // New books begin with narration. A linked collection has already supplied its
+        // speaker identities, so its tagged voices can work on the first window.
+        val linked = profile.profileSetId.isNotBlank()
+        val active = if (prior.windows == 0) profile.copy(mainVoice = profile.mainVoice.takeIf { linked }.orEmpty(), maleVoice = "", femaleVoice = "",
+            characters = if (linked) profile.characters.filter { it.role != CastRole.AUTO && it.voice.isNotBlank() }
+                else if (profile.sceneOnly) profile.characters.map { it.copy(role = CastRole.NARRATOR) } else emptyList(),
+            storyVoice = ChapterPerspectives.voice(profile, prior, chapter))
             else profile.copy(mainCharacter = profile.mainCharacter.ifBlank { mainName }, mainVoice = mainVoice, maleVoice = male, femaleVoice = female,
                 mainPronoun = profile.mainPronoun.takeUnless { it == CharacterPronoun.AUTO } ?: pronoun(mainPerson),
                 characters = (automatic + profile.characters).map { character ->

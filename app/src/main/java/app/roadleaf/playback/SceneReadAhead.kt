@@ -12,6 +12,7 @@ data class SceneNarratorChoice(val cast: BookVoiceCast, val viewpoint: String)
 object SceneReadAhead {
     private const val THINK = "(?:thought|wondered|realized|realised|felt|noticed|remembered|feared|hoped|decided|imagined|considered)"
     private val povHeader = Regex("""(?im)^\s*\[POV\s*:\s*([^\]\n]+)\]""")
+    private val focalAction = "(?:walked|stepped|crossed|entered|left|turned|stopped|paused|stood|sat|knelt|moved|reached|opened|closed|looked|watched|listened|waited|searched|followed|approached|returned|ran|rushed|held|touched|pulled|pushed|took|placed|lifted|lowered|shook|smiled|frowned|sighed)"
 
     private fun aliases(person: CastCharacter): List<String> =
         (listOf(person.name) + person.aliases.split(',')).map(String::trim).filter { it.length >= 2 }
@@ -58,14 +59,22 @@ object SceneReadAhead {
                 val internal = Regex(token + "(?:['’]s)?\\s+(?:heart|mind|pulse|fear)\\b", RegexOption.IGNORE_CASE)
                     .findAll(here).count()
                 val future = Regex(token + "\\s+" + THINK, RegexOption.IGNORE_CASE).findAll(ahead).count()
-                thoughts * 3.0 + sensory * 3.0 + internal * 1.0 + future * 0.8
+                // Repeated grammatical subjects can establish a third-person focal
+                // character; a single mention or quoted dialogue cannot.
+                val actions = Regex("(?:^|[.!?]\\s+|\\n)\\s*" + token + "\\s+" + focalAction + "\\b", RegexOption.IGNORE_CASE)
+                    .findAll(here).count()
+                thoughts * 3.0 + sensory * 3.0 + internal * 1.0 + future * 0.8 + actions * 1.4
             }
             name to score
         }.sortedByDescending { it.second }
         val winner = scores.firstOrNull()
         val runner = scores.getOrNull(1)?.second ?: 0.0
         val inferred = winner?.takeIf { it.second >= 2.5 && it.second >= runner + 1.4 }?.first
-        val selected = explicit ?: inferred.orEmpty()
+        // Once a scene has a confirmed focus, second-person references can keep that
+        // voice. "You" alone never identifies a character or moves the narrator.
+        val selected = explicit ?: inferred ?: previous.viewpoint.takeIf { old ->
+            people.any { (name, labels) -> name.equals(old, true) || labels.any { it.equals(old, true) } }
+        }.orEmpty()
         if (selected.isBlank()) return SceneNarratorChoice(cast, "")
         val chosenVoice = voice(cast, selected).ifBlank { return SceneNarratorChoice(cast, selected) }
         return SceneNarratorChoice(cast.copy(storyVoice = chosenVoice), selected)
