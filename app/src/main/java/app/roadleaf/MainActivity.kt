@@ -214,6 +214,9 @@ class MainActivity : ComponentActivity() {
                 val current = lorebookDraft ?: vm.app.casts.get(book)
                 val base = if (lorebookReplace) BookVoiceCast(narratorVoice = current.narratorVoice, sceneOnly = current.sceneOnly) else current
                 val imported = CastFiles.read(source, base)
+                require(imported.engine != NativeKokoro.ENGINE_ID || settings.enginePackage == NativeKokoro.ENGINE_ID) {
+                    "Select Kokoro in Voice settings, then import these Kokoro profiles again. No voices were changed."
+                }
                 // Delegate installed voices from the selected speech engine and accent.
                 val catalog = voiceCatalog?.takeIf { settings.enginePackage.isBlank() || it.enginePackage == settings.enginePackage }
                 val installed = catalog?.voices?.filter {
@@ -228,7 +231,8 @@ class MainActivity : ComponentActivity() {
                     if (imported.found > imported.characters) append(" (the first ${imported.characters} of ${imported.found})")
                     append(". ")
                     if (imported.kind in setOf(CastFiles.Kind.NOVELAI, CastFiles.Kind.LOREBOOK, CastFiles.Kind.CARD))
-                        append("Only names, nicknames and pronoun hints were kept, not the lorebook text. ")
+                        append("Only names, nicknames, pronoun hints and ${imported.taggedVoices} validated voice tags were kept, not the lorebook text. ")
+                    if (imported.taggedVoices > 0) append("Character speed tags do not change playback speed. ")
                     if (catalog == null || installed.isEmpty()) append("Tap Refresh installed voices, then import again to give each character a voice.")
                     else {
                         append("${delegated.assigned} got an installed voice")

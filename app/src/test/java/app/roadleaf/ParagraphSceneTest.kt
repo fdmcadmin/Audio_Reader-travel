@@ -98,6 +98,16 @@ class ParagraphSceneTest {
         val merged = CharacterLorebook.merge(existing, listOf(CastCharacter("Mira", voice = "other"), CastCharacter("New Person", role = CastRole.AUTO)))
         assertTrue(merged.sceneOnly); assertEquals("mira", merged.characters.first { it.name == "Mira" }.voice); assertEquals(3, merged.characters.size)
     }
+    @Test fun importingProfilesFillsAnAutomaticVoiceWithoutReplacingAnOwnerChoice() {
+        val existing = BookVoiceCast(characters = listOf(
+            CastCharacter("Aster", role = CastRole.AUTO), CastCharacter("Morrow", voice = "owner", role = CastRole.CUSTOM)))
+        val incoming = listOf(CastCharacter("Aster", voice = "kokoro:2", role = CastRole.CUSTOM),
+            CastCharacter("Morrow", voice = "kokoro:18", role = CastRole.CUSTOM))
+        val merged = CharacterLorebook.merge(existing, incoming, "story-one")
+        assertEquals("kokoro:2", merged.characters.first().voice)
+        assertEquals(CastRole.CUSTOM, merged.characters.first().role)
+        assertEquals("owner", merged.characters.last().voice)
+    }
     @Test fun sceneMetadataDoesNotConsumeTheNarratorOnlyOpening() {
         val profile = cast.copy(adaptive = true)
         val adaptation = AdaptiveCast.prepare(profile, LearnedCast(), AdaptiveVoices(), "chapter", 0, "[Scene: Mira]\n")

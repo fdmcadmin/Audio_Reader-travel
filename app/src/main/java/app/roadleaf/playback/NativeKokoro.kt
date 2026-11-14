@@ -36,6 +36,17 @@ internal class NativeKokoro(private val context: Context) {
             ?.takeIf { id.startsWith(PREFIX) && it in ENGLISH.indices }?.let(ENGLISH::get)
         fun speakerId(voice: String): Int? = voice.removePrefix(PREFIX).toIntOrNull()
             ?.takeIf { voice.startsWith(PREFIX) && it in ENGLISH.indices }
+        fun voiceIdForSpeaker(name: String): String? = ENGLISH.indexOf(name.trim().lowercase(java.util.Locale.ROOT))
+            .takeIf { it >= 0 }?.let { PREFIX + it }
+        fun voiceIdForTag(service: String, model: String, name: String, sid: Int): String {
+            require(service.equals("sherpa-onnx", true)) { "This lorebook's voice service is not supported by Roadleaf." }
+            require(model in setOf("kokoro-multi-lang-v1_0", "kokoro-int8-multi-lang-v1_0")) {
+                "The lorebook names model $model, but these speaker IDs require Kokoro v1.0. Correct the profile metadata before importing."
+            }
+            val id = voiceIdForSpeaker(name) ?: error("Unknown English Kokoro speaker: $name")
+            require(speakerId(id) == sid) { "Kokoro speaker name and ID disagree for $name." }
+            return id
+        }
         fun installed(context: Context): Boolean {
             val dir = folder(context)
             return File(dir, "model.int8.onnx").length() > 1_000_000L &&

@@ -33,6 +33,16 @@ class CastFileChecks(private val app: RoadleafApp, private val report: MutableLi
         check(CastFiles.read(scenario, empty).cast.characters.map { it.name } == listOf("Mara Vell", "Tobin Ashe"))
         report.add("PASS a NovelAI lorebook, also inside a scenario file, yields only its enabled characters with nicknames and pronoun hints; places and disabled entries are skipped")
 
+        val taggedLorebook = """{"lorebookVersion":6,"entries":[
+            {"id":"char_aster","displayName":"Aster","category":"Characters","keys":["Aster","Ash"],"enabled":true,"text":"Private fixture prose.","ttsProfile":{"service":"sherpa-onnx","model":"kokoro-multi-lang-v1_0","voice":"af_bella","sid":2}},
+            {"id":"char_morrow","displayName":"Morrow","category":"Characters","keys":["Morrow","Mo"],"enabled":true,"text":"Other private fixture prose.","ttsProfile":{"service":"sherpa-onnx","model":"kokoro-multi-lang-v1_0","voice":"am_puck","sid":18}}]}"""
+        val tagged = CastFiles.read(taggedLorebook, BookVoiceCast())
+        check(tagged.engine == "roadleaf.native.kokoro" && tagged.taggedVoices == 2 &&
+            tagged.cast.characters.map { it.voice } == listOf("kokoro:2", "kokoro:18"))
+        check(!tagged.cast.toString().contains("Private fixture prose"))
+        check(runCatching { CastFiles.read(taggedLorebook.replace("v1_0", "v1_1"), BookVoiceCast()) }.isFailure)
+        report.add("PASS tagged lorebook characters retain distinct Kokoro v1.0 voices without story text; incorrect model labels are rejected")
+
         val key = "https://tales.example/cast-check"
         val preferences = app.getSharedPreferences("voice-cast", 0)
         try {

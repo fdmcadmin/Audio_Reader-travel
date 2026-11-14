@@ -12,9 +12,11 @@ import java.util.Locale
 object LorebookCast {
     const val MAX_CHARACTERS = 64
 
+    data class VoiceTag(val service: String, val model: String, val voice: String, val sid: Int)
+
     /** One lorebook entry in a format-neutral shape. [text] is used only while importing. */
     data class Entry(val id: String = "", val name: String = "", val keys: List<String> = emptyList(), val text: String = "",
-        val category: String = "", val enabled: Boolean = true)
+        val category: String = "", val enabled: Boolean = true, val voiceTag: VoiceTag? = null)
 
     data class Result(val characters: List<CastCharacter>, val found: Int)
 
