@@ -6,10 +6,30 @@ import org.json.JSONObject
 /** Reads collection-exported voice metadata only; full lorebooks/modules are rejected. */
 object CharacterLorebook {
     const val MAX_BYTES = 2 * 1024 * 1024
+    private fun isKokoroService(value: String): Boolean = value.trim().lowercase(java.util.Locale.ROOT)
+        .replace(Regex("[\\s_/]+"), "-") in setOf("sherpa-onnx-kokoro", "roadleaf.native.kokoro")
+
+    private fun profileVoice(value: String, kokoro: Boolean): String {
+        require(value.length <= 160 && !value.contains('\n')) { "Keep voice IDs short." }
+        if (!kokoro || value.isBlank()) return value
+        return if (value.startsWith("kokoro:")) {
+            require(NativeKokoro.speakerId(value) != null) { "Unknown English Kokoro speaker: $value" }
+            value
+        } else NativeKokoro.voiceIdForSpeaker(value)
+            ?: error("Unknown English Kokoro speaker: $value")
+    }
+    fun profileVoiceTag(tag: JSONObject): String {
+        require(tag.has("service") && tag.has("model") && tag.has("voice") && tag.has("sid")) {
+            "A character voice profile needs service, model, voice and speaker ID."
+        }
+        require(tag.opt("sid") is Number) { "The character voice speaker ID must be a number." }
+        return NativeKokoro.voiceIdForTag(tag.getString("service"), tag.getString("model"), tag.getString("voice"), tag.getInt("sid"))
+    }
     data class Header(val id: String, val name: String, val category: String = "", val enabled: Boolean = true, val keys: List<String> = emptyList(),
         val voice: String = "", val pronoun: CharacterPronoun = CharacterPronoun.AUTO, val delivery: CharacterDelivery = CharacterDelivery.FOLLOW_STORY)
     data class Profiles(val id: String, val characters: List<CastCharacter>, val engine: String = "", val mainCharacter: String = "",
-        val mainVoice: String = "", val narratorVoice: String = "", val mainPronoun: CharacterPronoun = CharacterPronoun.AUTO) {
+        val mainVoice: String = "", val narratorVoice: String = "", val mainPronoun: CharacterPronoun = CharacterPronoun.AUTO,
+        val correctedModelLabels: Int = 0) {
         val voices get() = (characters.map { it.voice } + mainVoice + narratorVoice).filter(String::isNotBlank).toSet()
     }
     fun parse(json: String): List<CastCharacter> = decode(json).characters
@@ -21,16 +41,32 @@ object CharacterLorebook {
         require(id.isNotBlank() && id.length <= 120) { "A profile-set ID is required." }
         val entries = root.getJSONArray("entries")
         require(entries.length() <= 512) { "Keep the lorebook to 512 entries." }
+        val engine = root.optString("enginePackage")
+        val services = (listOf(root.optString("voiceService")) + (0 until entries.length()).map { entries.getJSONObject(it).optString("voiceService") } +
+            (0 until entries.length()).map { entries.getJSONObject(it).optJSONObject("ttsProfile")?.optString("service").orEmpty() })
+            .filter(String::isNotBlank)
+        require(services.all { isKokoroService(it) || it.equals("sherpa-onnx", true) }) { "This voice-profile service is not supported by Roadleaf." }
+        val kokoro = services.isNotEmpty() || engine == NativeKokoro.ENGINE_ID
+        require(!kokoro || engine.isBlank() || engine == NativeKokoro.ENGINE_ID) { "The profile service and speech engine disagree." }
         return Profiles(id, headers((0 until entries.length()).map { i ->
             val item = entries.getJSONObject(i)
             require(!item.has("text") && !item.has("contextConfig") && !item.has("loreBiasGroups")) { "This file contains module content. Import only the collection's voice-profile metadata." }
             Header(item.optString("id"), item.optString("displayName"), item.optString("category"), item.optBoolean("enabled", true),
                 item.optJSONArray("keys")?.let { array -> (0 until minOf(array.length(), 24)).map { array.getString(it) } }.orEmpty(),
-                item.optString("voice").also { require(it.length <= 160 && !it.contains('\n')) { "Keep voice IDs short." } },
+                item.optJSONObject("ttsProfile")?.let { tag ->
+                    profileVoiceTag(tag).also { resolved ->
+                        require(item.optString("voice").isBlank() || profileVoice(item.optString("voice"), kokoro) == resolved) {
+                            "A character has conflicting Kokoro voice tags."
+                        }
+                    }
+                } ?: profileVoice(item.optString("voice"), kokoro),
                 item.optString("pronoun", "AUTO").let { raw -> CharacterPronoun.entries.firstOrNull { it.name == raw } ?: error("Unknown character pronoun.") },
                 item.optString("delivery", "FOLLOW_STORY").let { raw -> CharacterDelivery.entries.firstOrNull { it.name == raw } ?: error("Unknown character delivery.") })
-        }), root.optString("enginePackage"), root.optString("mainCharacter"), root.optString("mainVoice"), root.optString("narratorVoice"),
-            root.optString("mainPronoun", "AUTO").let { raw -> CharacterPronoun.entries.firstOrNull { it.name == raw } ?: error("Unknown main pronoun.") }).also {
+        }), if (kokoro) NativeKokoro.ENGINE_ID else engine, root.optString("mainCharacter"),
+            profileVoice(root.optString("mainVoice"), kokoro), profileVoice(root.optString("narratorVoice"), kokoro),
+            root.optString("mainPronoun", "AUTO").let { raw -> CharacterPronoun.entries.firstOrNull { it.name == raw } ?: error("Unknown main pronoun.") },
+            (0 until entries.length()).count { i -> val item = entries.getJSONObject(i); item.optBoolean("enabled", true) &&
+                NativeKokoro.correctedV11Label(item.optJSONObject("ttsProfile")?.optString("model").orEmpty()) }).also {
             require(it.engine.length <= 160 && it.mainCharacter.length <= 240 && it.mainVoice.length <= 160 && it.narratorVoice.length <= 160) { "Keep voice settings short." }
         }
     }
@@ -55,7 +91,10 @@ object CharacterLorebook {
         fun same(a: CastCharacter, b: CastCharacter) = a.profileId.isNotBlank() && a.profileId == b.profileId || a.name.equals(b.name, true)
         val retained = existing.characters.map { current ->
             val fresh = imported.firstOrNull { same(current, it) } ?: return@map current
+            val applyVoice = fresh.role == CastRole.CUSTOM && fresh.voice.isNotBlank() &&
+                (current.voice.isBlank() || current.role == CastRole.AUTO)
             current.copy(name = fresh.name, profileId = fresh.profileId.ifBlank { current.profileId },
+                role = if (applyVoice) CastRole.CUSTOM else current.role, voice = if (applyVoice) fresh.voice else current.voice,
                 aliases = (current.aliases.split(',') + fresh.aliases.split(',') + current.name.takeUnless { it.equals(fresh.name, true) }.orEmpty()).map(String::trim).filter(String::isNotBlank).distinct().joinToString(",").take(240))
         }
         return existing.copy(sceneOnly = true, profileSetId = profileSetId, characters = retained + imported.filter { fresh -> existing.characters.none { same(it, fresh) } }).validated()

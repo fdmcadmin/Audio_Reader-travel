@@ -23,6 +23,7 @@ import androidx.core.net.toUri
 import java.io.StringReader
 import java.io.File
 import app.roadleaf.importing.BookFiles
+import app.roadleaf.importing.ExpeditionJson
 import app.roadleaf.browser.BrowserStory
 import app.roadleaf.browser.BrowserStart
 import com.google.common.util.concurrent.Futures
@@ -90,9 +91,11 @@ class NarrationService : MediaLibraryService() {
     private val progressMutex = Mutex()
     private var work: Job? = null
     private var refill: Job? = null
+    private var expeditionAdvance: Job? = null
     private var checkpoint: Job? = null
     private var queue: ChapterNarrationQueue? = null
     private var activeChapters = emptyList<Chapter>()
+    private var expeditionBookId: String? = null
     private var temporaryQueue: List<Chapter>? = null
     private var sessionSettings = ListeningSettings()
     private var pronounce: (String) -> String = { it }
@@ -547,7 +550,7 @@ class NarrationService : MediaLibraryService() {
                 else if (queue?.exhausted == true) {
                     if (browserFeed != null) scheduleBrowserTail()
                     else if (webPage != null) scope.launch { beginWebNavigation() }
-                    else { completed = true; scope.launch { persist() }; app.playbackStatus.value = "Book complete" }
+                    else if (!scheduleExpeditionTail()) { completed = true; scope.launch { persist() }; app.playbackStatus.value = "Book complete" }
                 } else fillAhead()
             }
             override fun onPlayerError(error: PlaybackException) { app.playbackStatus.value = "Playback stopped: ${error.localizedMessage}. Choose Listen to retry." }
@@ -731,12 +734,20 @@ class NarrationService : MediaLibraryService() {
     }
     private suspend fun selectBook(bookId: String, chapterId: String?): Progress? {
         stopRendering()
+        val book = app.browserStories.book(bookId)
+        // A disconnected Dropbox provider must not block chapters already saved offline.
+        if (book?.sourceId == ExpeditionJson.SOURCE_ID) runCatching { app.importer.refreshExpedition() }
         val chapters = app.browserStories.chapters(bookId)
         require(chapters.isNotEmpty()) { "No chapters found." }
-        val saved = if (chapterId == null) app.browserStories.progress(bookId)?.takeUnless { it.textOffset == Int.MAX_VALUE } else null
+        val stored = if (chapterId == null) app.browserStories.progress(bookId) else null
+        val saved = stored?.takeUnless { it.textOffset == Int.MAX_VALUE }
+        val nextAfterCompleted = if (book?.sourceId == ExpeditionJson.SOURCE_ID && stored?.textOffset == Int.MAX_VALUE)
+            chapters.firstOrNull { it.ordinal > (chapters.firstOrNull { chapter -> chapter.id == stored.chapterId }?.ordinal ?: -1) } else null
+        if (book?.sourceId == ExpeditionJson.SOURCE_ID && chapterId == null && stored?.textOffset == Int.MAX_VALUE && nextAfterCompleted == null)
+            error("Waiting for the next validated Expedition chapter. Choose Chapters to replay an earlier one.")
         temporaryQueue = chapters.takeIf { app.browserStories.isTemporary(bookId) }
         if (temporaryQueue != null) return saved
-        val start = chapters.indexOfFirst { it.id == (chapterId ?: saved?.chapterId) }.coerceAtLeast(0)
+        val start = chapters.indexOfFirst { it.id == (chapterId ?: nextAfterCompleted?.id ?: saved?.chapterId) }.coerceAtLeast(0)
         val previous = app.dao.queue()
         val chapterIds = chapters.map { it.id }.toSet()
         val resumeQueue = saved != null && previous.any { it.chapterId == saved.chapterId } && previous.all { it.chapterId in chapterIds }
@@ -770,6 +781,7 @@ class NarrationService : MediaLibraryService() {
         pronounce = SpeechText.pronouncer(app.dao.pronunciationSnapshot().map { it.written to it.spoken })
         activeChapters = temporaryQueue ?: app.dao.queuedChapters()
         val books = activeChapters.map { it.bookId }.distinct().associateWith { requireNotNull(app.browserStories.book(it)) }
+        expeditionBookId = books.values.singleOrNull()?.takeIf { it.sourceId == ExpeditionJson.SOURCE_ID }?.id
         chapterItems = activeChapters.map { chapter -> chapterItem("chapter:${chapter.id}", chapter.title, books[chapter.bookId]?.title.orEmpty(),
             Bundle().apply { putString("chapterId", chapter.id); putString("bookId", chapter.bookId) }) }
         val timingKey = saved?.bookId.orEmpty()
@@ -816,9 +828,47 @@ class NarrationService : MediaLibraryService() {
             if (player.playbackState == Player.STATE_ENDED && queue?.exhausted == true) {
                 if (browserFeed != null) scheduleBrowserTail()
                 else if (webPage != null) beginWebNavigation()
-                else { completed = true; persist(); app.playbackStatus.value = "Book complete" }
+                else if (!scheduleExpeditionTail()) { completed = true; persist(); app.playbackStatus.value = "Book complete" }
             }
         } }
+    }
+    /** At EOF, fetch only newly validated chapter files, then continue from the next number. */
+    private fun scheduleExpeditionTail(): Boolean {
+        val chapterId = player.currentMediaItem?.mediaMetadata?.extras?.getString("chapterId") ?: return false
+        val bookId = player.currentMediaItem?.mediaMetadata?.extras?.getString("bookId") ?: return false
+        if (expeditionBookId != bookId || activeChapters.lastOrNull()?.id != chapterId) return false
+        if (expeditionAdvance?.isActive == true) return true
+        expeditionAdvance = scope.launch {
+            try { queueMutex.withLock { safely {
+                val book = app.dao.book(bookId) ?: return@safely
+                if (book.sourceId != ExpeditionJson.SOURCE_ID || player.playbackState != Player.STATE_ENDED || queue?.exhausted != true) return@safely
+                completed = true; persist()
+                app.playbackStatus.value = "Checking for the next validated Expedition chapter…"
+                val current = app.dao.chapter(chapterId) ?: return@safely
+                val refreshed = runCatching { app.importer.refreshExpedition() }.getOrElse {
+                    app.playbackStatus.value = "Chapter complete • saved chapters remain offline; check the Expedition folder later"
+                    return@safely
+                }
+                val next = app.dao.chapters(bookId).firstOrNull { it.ordinal == current.ordinal + 1 }
+                if (next == null) {
+                    app.playbackStatus.value = "Chapter complete • waiting for the next validated Expedition chapter"
+                    return@safely
+                }
+                if (refreshed.book?.id != bookId || !player.playWhenReady) {
+                    app.playbackStatus.value = "Next Expedition chapter ready • press Play to continue"
+                    return@safely
+                }
+                val audio = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+                if (audio.isMusicActive || audio.mode in setOf(android.media.AudioManager.MODE_IN_CALL,
+                        android.media.AudioManager.MODE_IN_COMMUNICATION, android.media.AudioManager.MODE_RINGTONE)) {
+                    player.pause()
+                    app.playbackStatus.value = "Next Expedition chapter ready • paused for other audio"
+                    return@safely
+                }
+                loadBook(bookId, next.id)
+            } } } finally { expeditionAdvance = null }
+        }
+        return true
     }
     /** Catch up only after the old snapshot finished; never reset speech already in progress. */
     private fun scheduleBrowserTail(resumeRequested: Boolean = false) {

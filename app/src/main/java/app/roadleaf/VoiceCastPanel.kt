@@ -15,7 +15,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     books: List<CastBookChoice>, selectedBook: String, onBook: (String) -> Unit,
     value: BookVoiceCast, learned: LearnedCast, settings: ListeningSettings, catalog: SpeechCatalog?, busy: Boolean,
     onSave: (String, BookVoiceCast) -> Unit, onPreview: (String, String, Float) -> Unit, onRefresh: () -> Unit, onReset: (String) -> Unit,
-    onImportLorebook: (String, BookVoiceCast) -> Unit, onExport: (String, BookVoiceCast) -> Unit = { _, _ -> }, onMoreVoices: () -> Unit = {}
+    onImportLorebook: (String, BookVoiceCast) -> Unit, onCreateStoryProfile: () -> Unit, onExport: (String, BookVoiceCast) -> Unit = { _, _ -> }, onMoreVoices: () -> Unit = {}
 ) {
     var draft by remember(selectedBook, value) { mutableStateOf(value) }
     var editing by remember(selectedBook) { mutableStateOf<Int?>(null) }
@@ -23,7 +23,12 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     var showLearned by remember(selectedBook) { mutableStateOf(false) }
     var reset by remember { mutableStateOf(false) }
     val matches = catalog != null && (settings.enginePackage.isBlank() || catalog.enginePackage == settings.enginePackage)
-    val voices = if (matches) catalog!!.voices.filter { it.localeTag == settings.localeTag } else emptyList()
+    val voices = if (matches) catalog!!.voices.filter {
+        it.localeTag == settings.localeTag ||
+            (catalog.enginePackage == NativeKokoro.ENGINE_ID &&
+                it.localeTag.startsWith("en-", ignoreCase = true) &&
+                settings.localeTag.startsWith("en-", ignoreCase = true))
+    } else emptyList()
     val choices = listOf(Choice("", if (draft.adaptive) "Choose as the reader learns" else "Use narrator")) + voices.map { Choice(it.name, voiceLabel(it.name, catalog?.enginePackage.orEmpty())) }
     val effective = remember(draft, learned, catalog, settings) {
         AdaptiveCast.prepare(draft, learned, catalog?.let { AdaptiveVoices.from(it, settings) } ?: AdaptiveVoices(), "preview", 0, "").cast
@@ -42,12 +47,13 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Character voices", style = MaterialTheme.typography.titleLarge)
-        Text("Each new book begins with the narrator. In Automatic, character voices emerge as clear cues repeat, and stay saved for that book.", style = MaterialTheme.typography.bodyMedium)
+        Text("Each story has its own narrator and character voices. Create a NovelAI story profile before importing its Lorebook, or choose a saved book.", style = MaterialTheme.typography.bodyMedium)
+        OutlinedButton(onClick = onCreateStoryProfile, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Create NovelAI story voice profile") }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { onImportLorebook(selectedBook, draft) }, enabled = selectedBook.isNotBlank() && !busy) { Text("Import cast or lorebook") }
             OutlinedButton(onClick = { onExport(selectedBook, draft) }, enabled = selectedBook.isNotBlank() && !busy) { Text("Export cast") }
         }
-        Text("Import a Roadleaf cast file, story voice profiles, a NovelAI lorebook or another lorebook or character card (JSON). From lorebooks Roadleaf keeps only character names, nicknames and pronoun hints, never the lorebook text, then gives each character an installed voice. Export saves this book's cast to a file you can import into any book.",
+        Text("Import a Roadleaf cast file, story voice profiles, a NovelAI lorebook or another lorebook or character card (JSON). From lorebooks Roadleaf keeps character names, nicknames, pronoun hints and compatible local voice tags, never the lorebook text. Export saves this book's cast to a file you can import into any book.",
             style = MaterialTheme.typography.bodySmall)
         if (draft.profileSetId.isNotBlank()) TextButton(onClick = { draft = draft.copy(profileSetId = "", characters = draft.characters.map { it.copy(profileId = "") }) }) { Text("Unlink collection · keep voice choices") }
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -55,7 +61,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             Text("Activate profiles only in their scene")
         }
         Text("Scene breaks: ***, ---, ⁂, ###, or [Scene: names]. Names/aliases activate profiles within that scene; the next break clears them. Descriptions are never read aloud.", style = MaterialTheme.typography.bodySmall)
-        if (books.isEmpty()) Text("Add a website book or import a file in Library to set up its cast.")
+        if (books.isEmpty()) Text("No stories are registered in this installation yet. Tap Create NovelAI story voice profile above, then import the Lorebook without capturing text first.")
         else {
             ChoicePicker("Book", selectedBook, books.map { Choice(it.id, it.title) }, onSelect = onBook)
             ChoicePicker("Book narrator", draft.narratorVoice, listOf(Choice("", "Use default narrator")) + voices.map { Choice(it.name, voiceLabel(it.name, catalog?.enginePackage.orEmpty())) }, !busy && matches) {
@@ -66,7 +72,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             ChoicePicker("Reading voices", mode, listOf(Choice("automatic", "Automatic · learn as I listen"), Choice("narrator", "Narrator only"), Choice("manual", "My assignments only"))) {
                 draft = draft.copy(enabled = it != "narrator", adaptive = it == "automatic")
             }
-            Text("Dialogue keeps each character’s assigned voice. Story narration can follow the chapter’s viewpoint, independently of the book’s main character. Uncertain speakers keep the narrator. Your assignments take priority.", style = MaterialTheme.typography.bodySmall)
+            Text("Dialogue keeps each character’s assigned voice. Narration follows a confirmed scene focus across second- or third-person paragraphs and clears at the next scene break. A lone pronoun or name does not choose a voice; uncertain passages use the narrator.", style = MaterialTheme.typography.bodySmall)
             ChoicePicker("Story narration", if (draft.followViewpoint) "viewpoint" else "narrator", listOf(Choice("viewpoint", "Follow chapter viewpoint"), Choice("narrator", "Narrator by default"))) {
                 draft = draft.copy(followViewpoint = it == "viewpoint")
             }
@@ -76,14 +82,14 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             if (chapter.isNotBlank()) ChoicePicker("This webpage chapter · ${chapter.substringAfterLast('/')}", draft.chapterViewpoints[chapter].orEmpty(), perspectiveChoices) { name ->
                 draft = draft.copy(chapterViewpoints = if (name.isBlank()) draft.chapterViewpoints - chapter else draft.chapterViewpoints + (chapter to name))
             }
-            Text("A confirmed chapter choice starts immediately. Automatic viewpoint needs repeated clear evidence in that chapter; it does not assume the MC narrates every chapter.", style = MaterialTheme.typography.bodySmall)
+            Text("A confirmed chapter choice starts immediately. Automatic scene focus needs a POV marker, thought cue or repeated focal actions; it never assumes the MC narrates every scene.", style = MaterialTheme.typography.bodySmall)
             draft.chapterViewpoints.forEach { (id, name) -> Row {
                 Text("${id.substringAfterLast('/')} · ${if (name == "@narrator") "Narrator" else name}", Modifier.weight(1f).padding(top = 12.dp), style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { draft = draft.copy(chapterViewpoints = draft.chapterViewpoints - id) }) { Text("Remove choice") }
             } }
             if (matches) {
                 val engine = catalog!!.engines.firstOrNull { it.packageName == catalog.enginePackage }?.label ?: catalog.enginePackage
-                Text("Using $engine · ${voices.size} installed ${settings.localeTag} voices. One speech app supplies this cast at a time.", style = MaterialTheme.typography.bodySmall)
+                Text("Using $engine · ${voices.size} compatible English/offline voices. Each saved book keeps its own assignments.", style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { onPreview(available.narrator, sample, 1f) }, enabled = !busy) { Text("Hear narrator for comparison") }
                 val selected = listOf(available.narrator, auditionMain, auditionFemale, auditionMale).filter(String::isNotBlank)
                 if (selected.distinct().size < selected.size) Text("Some roles share the same voice. Choose different installed voices below for clearer distinction.", style = MaterialTheme.typography.bodySmall)

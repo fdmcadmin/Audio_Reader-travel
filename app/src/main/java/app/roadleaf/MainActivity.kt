@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
         var showSourceHelp by remember { mutableStateOf(false) }
         var voiceCatalog by remember { mutableStateOf<SpeechCatalog?>(null) }
         var voicesBusy by remember { mutableStateOf(false) }
+        var kokoroImportBusy by remember { mutableStateOf(false) }
         var voiceRequest by remember { mutableIntStateOf(0) }
         var browserAction by remember { mutableStateOf<SourceAction.Browser?>(null) }
         var bookToDelete by remember { mutableStateOf<Book?>(null) }
@@ -90,6 +91,10 @@ class MainActivity : ComponentActivity() {
         var showAllWebBooks by remember { mutableStateOf(false) }
         var lorebookBook by rememberSaveable { mutableStateOf<String?>(null) }
         var lorebookDraft by remember { mutableStateOf<BookVoiceCast?>(null) }
+        var lorebookReplace by rememberSaveable { mutableStateOf(false) }
+        var showImportChoice by remember { mutableStateOf(false) }
+        var showCreateStoryProfile by remember { mutableStateOf(false) }
+        var newStoryProfileName by rememberSaveable { mutableStateOf("") }
         var exportBook by rememberSaveable { mutableStateOf<String?>(null) }
         var exportDraft by remember { mutableStateOf<BookVoiceCast?>(null) }
         var showVoiceSources by remember { mutableStateOf(false) }
@@ -112,8 +117,26 @@ class MainActivity : ComponentActivity() {
         val castRequest by pendingCast.collectAsStateWithLifecycle()
         val castRevision by vm.app.casts.changes.collectAsStateWithLifecycle()
         val learnedRevision by vm.app.learnedCasts.changes.collectAsStateWithLifecycle()
-        val castBooks = books.map { CastBookChoice(it.id, it.title) } + webBooks.filter { WebBookLinks.resolve(it.chapterUrl)?.readable == true }.map { CastBookChoice(it.bookUrl, it.title, it.chapterUrl) }
+        val castBooks = books.map { CastBookChoice(it.id, if (it.sourceId == BrowserStory.SOURCE) "NovelAI story · ${it.title}" else it.title) } + webBooks.filter { WebBookLinks.resolve(it.chapterUrl)?.readable == true }.map { CastBookChoice(it.bookUrl, it.title, it.chapterUrl) }
         val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::import) }
+        val kokoroArchivePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null && !kokoroImportBusy) {
+                kokoroImportBusy = true
+                vm.message.value = "Installing Kokoro's offline voices from this archive. Keep Roadleaf open until the model finishes importing."
+                vm.task {
+                    try {
+                        val result = KokoroModelImport.install(this@MainActivity, uri)
+                        voiceCatalog = null
+                        vm.message.value = result
+                    } catch (error: Exception) {
+                        vm.message.value = "Kokoro import failed: " + (error.message ?: "invalid or incomplete model archive")
+                    } finally {
+                        kokoroImportBusy = false
+                    }
+                }
+            }
+        }
+        val expeditionFolderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let(vm::linkExpedition) }
         fun openBrowser(url: String) { runCatching { startActivity(Intent(Intent.ACTION_VIEW, url.toUri())); vm.rememberWebsite(url) }.onFailure { vm.message.value = "No browser is available." } }
         fun openWebBook(url: String, resume: Boolean = false) {
             startActivity(Intent(this@MainActivity, WebReaderActivity::class.java).putExtra("url", url)
@@ -186,10 +209,20 @@ class MainActivity : ComponentActivity() {
                         output.toString("UTF-8")
                     } ?: error("Cannot read this file.")
                 }
-                val imported = CastFiles.read(source, lorebookDraft ?: vm.app.casts.get(book))
+                // An import always targets one named Library book. Replace starts with a fresh cast
+                // while retaining only that book's narrator choice and scene mode.
+                val current = lorebookDraft ?: vm.app.casts.get(book)
+                val base = if (lorebookReplace) BookVoiceCast(narratorVoice = current.narratorVoice, sceneOnly = current.sceneOnly) else current
+                val imported = CastFiles.read(source, base)
+                require(imported.engine != NativeKokoro.ENGINE_ID || settings.enginePackage == NativeKokoro.ENGINE_ID) {
+                    "Select Kokoro in Voice settings, then import these Kokoro profiles again. No voices were changed."
+                }
                 // Delegate installed voices from the selected speech engine and accent.
                 val catalog = voiceCatalog?.takeIf { settings.enginePackage.isBlank() || it.enginePackage == settings.enginePackage }
-                val installed = catalog?.voices?.filter { it.localeTag.equals(settings.localeTag, true) }?.map { it.name }.orEmpty()
+                val installed = catalog?.voices?.filter {
+                    it.localeTag.equals(settings.localeTag, true) ||
+                        (catalog.enginePackage == NativeKokoro.ENGINE_ID && it.localeTag.startsWith("en-", ignoreCase = true))
+                }?.map { it.name }.orEmpty()
                 val delegated = VoiceDelegation.assign(imported.cast, installed, imported.cast.narratorVoice.ifBlank { settings.voiceName })
                 vm.app.casts.save(book, delegated.cast)
                 send(NarrationService.APPLY_CAST, Bundle().apply { putString("book", book) })
@@ -198,7 +231,11 @@ class MainActivity : ComponentActivity() {
                     if (imported.found > imported.characters) append(" (the first ${imported.characters} of ${imported.found})")
                     append(". ")
                     if (imported.kind in setOf(CastFiles.Kind.NOVELAI, CastFiles.Kind.LOREBOOK, CastFiles.Kind.CARD))
-                        append("Only names, nicknames and pronoun hints were kept, not the lorebook text. ")
+                        append("Only names, nicknames, pronoun hints and ${imported.taggedVoices} validated voice tags were kept, not the lorebook text. ")
+                    if (imported.correctedModelLabels > 0)
+                        append("${imported.correctedModelLabels} voice tags said Kokoro v1.1, but their speaker names and IDs match v1.0; Roadleaf used v1.0. ")
+                    if (imported.taggedVoices > 0 && imported.kind in setOf(CastFiles.Kind.NOVELAI, CastFiles.Kind.LOREBOOK, CastFiles.Kind.CARD))
+                        append("Character speed tags do not change playback speed. ")
                     if (catalog == null || installed.isEmpty()) append("Tap Refresh installed voices, then import again to give each character a voice.")
                     else {
                         append("${delegated.assigned} got an installed voice")
@@ -208,7 +245,7 @@ class MainActivity : ComponentActivity() {
                         if (delegated.unlabelled) append("This speech app doesn't label voices female or male, so check each character with Hear.")
                     }
                 }.trim()
-                lorebookBook = null; lorebookDraft = null
+                lorebookBook = null; lorebookDraft = null; lorebookReplace = false
                 if (catalog != null && delegated.needsMoreVoices) showVoiceSources = true
             }
         }
@@ -366,6 +403,17 @@ class MainActivity : ComponentActivity() {
                                 OutlinedButton(onClick = { importer.launch(arrayOf("application/epub+zip", "text/plain", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Import file") }
                             }
                         }
+                        item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("The Meridian Hunt", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Choose the Expedition folder in Dropbox once. Roadleaf saves its original Chapter 1 TXT and later validated chapter JSON for offline listening, then moves to the next numbered chapter automatically.", style = MaterialTheme.typography.bodySmall)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { expeditionFolderPicker.launch(null) }, enabled = !busy) { Text("Choose folder") }
+                                if (vm.app.importer.expeditionFolder() != null) TextButton(onClick = vm::refreshExpedition, enabled = !busy) { Text("Check chapters") }
+                            }
+                            books.firstOrNull { it.sourceId == "expedition-json" }?.let { expedition ->
+                                Button(onClick = { load(expedition.id) }, enabled = !busy && controller != null) { Text("Listen to The Meridian Hunt") }
+                            }
+                        } } }
                         item { Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("Quick picks", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                             Text("Website books save here automatically with the latest page you opened.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -405,20 +453,25 @@ class MainActivity : ComponentActivity() {
                         if (novelAiAdded) item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             Text("NovelAI", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                             Text("Your NovelAI stories, read in your browser", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Open your story in your browser, tap inside the story box, tap the Roadleaf bubble, then From top or Resume. New text is read as NovelAI writes it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("For separate story voices and bookmarks, first choose Save / link a specific story below. A general NovelAI website link cannot distinguish different manuscripts.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { openNovelAi() }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Open NovelAI") }
                                 TextButton(onClick = { startActivity(Intent(this@MainActivity, NovelAiBrowserActivity::class.java)) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("How to read it") }
                             }
+                            OutlinedButton(onClick = { startActivity(Intent(this@MainActivity, NovelAiBrowserActivity::class.java)) }, modifier = Modifier.fillMaxWidth()) { Text("Save / link a specific NovelAI story") }
                             TextButton(onClick = { vm.app.browserReader.showNovelAi(false) }) { Text("Remove NovelAI") }
                         } } }
-                        item { Spacer(Modifier.height(4.dp)); Text("Offline library", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold); Text("Imported EPUB and TXT files work without a connection.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        item { Spacer(Modifier.height(4.dp)); Text("Offline library", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold); Text("Imported EPUB, TXT and Expedition chapters work without a connection.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         if (books.isEmpty()) item { Text("Your imported books will appear here.", style = MaterialTheme.typography.bodyMedium); TextButton(onClick = vm::sample, enabled = !busy) { Text("Try a short voice test") } }
                         items(books, key = { it.id }) { book -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
                             Text(book.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold); Text(book.author, style = MaterialTheme.typography.bodySmall)
-                            Text("Available offline", style = MaterialTheme.typography.labelMedium)
+                            Text(if (book.sourceId == BrowserStory.SOURCE) "NovelAI manuscript · separate voice profile" else "Available offline", style = MaterialTheme.typography.labelMedium)
                             Row { Button(onClick = { load(book.id) }) { Text("Listen") }; TextButton(onClick = { vm.showChapters(book.id); showQueue = true }, enabled = !busy) { Text("Chapters") } }
                             TextButton(onClick = { castBook = book.id; tab = 2; voiceSection = 1 }) { Text("Character voices") }
+                            if (book.sourceId == BrowserStory.SOURCE) TextButton(onClick = {
+                                startActivity(Intent(this@MainActivity, NovelAiBrowserActivity::class.java)
+                                    .putExtra("novelAiStoryId", book.id).putExtra("novelAiStoryTitle", book.title))
+                            }) { Text("Link / read this story in NovelAI") }
                             TextButton(onClick = { send(NarrationService.RESUME_PARAGRAPH, Bundle().apply { putString("bookId", book.id) }) }, enabled = !busy && controller != null) { Text("Resume paragraph") }
                             if (book.sourceId == "author-file") TextButton(onClick = { updateBook = book.id; storyUpdatePicker.launch(arrayOf("text/plain", "application/octet-stream")) }, enabled = !busy && controller != null) { Text("Update story text (TXT)") }
                             TextButton(onClick = { bookToDelete = book }, enabled = !busy && controller != null) { Text("Delete from library") }
@@ -455,7 +508,10 @@ class MainActivity : ComponentActivity() {
                         if (voiceSection == 0) item { VoiceSettingsPanel(settings, voiceCatalog, voicesBusy, controller != null, ::refreshVoices,
                             onApply = { vm.saveSettings(it); send(NarrationService.APPLY_SETTINGS); vm.message.value = "Narrator settings saved" },
                             onPreview = { value, text -> vm.saveSettings(value); send(NarrationService.PREVIEW, Bundle().apply { putString("text", text) }) },
-                            onAndroidSettings = ::voiceSettings, onMoreVoices = { showVoiceSources = true }) }
+                            onAndroidSettings = ::voiceSettings, onMoreVoices = { showVoiceSources = true },
+                            onImportKokoro = { kokoroArchivePicker.launch(arrayOf("*/*")) },
+                            onDownloadKokoro = { openLink(NativeKokoro.MODEL_URL) },
+                            kokoroInstalled = NativeKokoro.installed(this@MainActivity), kokoroImportBusy = kokoroImportBusy) }
                         if (voiceSection == 1) item {
                             val cast = remember(castBook, castRevision) { vm.app.casts.get(castBook) }
                             val learned = remember(castBook, learnedRevision) { vm.app.learnedCasts.get(castBook) }
@@ -470,7 +526,8 @@ class MainActivity : ComponentActivity() {
                                         active.awaitCommand(NarrationService.RESET_LEARNING, Bundle().apply { putString("book", key) })
                                         vm.message.value = "Learning reset. Continue this book from Library."
                                     } }
-                                }, onImportLorebook = { key, draft -> lorebookBook = key; lorebookDraft = draft; lorebookPicker.launch(arrayOf("*/*")) },
+                                }, onImportLorebook = { key, draft -> lorebookBook = key; lorebookDraft = draft; showImportChoice = true },
+                                onCreateStoryProfile = { newStoryProfileName = ""; showCreateStoryProfile = true },
                                 onExport = { key, draft -> exportBook = key; exportDraft = draft; castExporter.launch((castBooks.firstOrNull { it.id == key }?.title ?: "Book").replace(Regex("[^A-Za-z0-9 _-]"), "").trim().ifBlank { "Book" } + " cast.json") },
                                 onMoreVoices = { showVoiceSources = true })
                         }
@@ -526,6 +583,48 @@ class MainActivity : ComponentActivity() {
                 vm.message.value = "Deleted ${book.title} from library"
             }
         }) { Text("Delete book") } }, dismissButton = { TextButton(onClick = { bookToDelete = null }) { Text("Keep book") } }) }
+        if (showCreateStoryProfile) AlertDialog(
+            onDismissRequest = { showCreateStoryProfile = false },
+            title = { Text("Create a NovelAI story voice profile") },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Each manuscript gets its own voice cast. Import its Lorebook now, then connect the NovelAI editor later. No story text or existing voices are overwritten.")
+                OutlinedTextField(newStoryProfileName, { newStoryProfileName = it.take(160) },
+                    label = { Text("Name of this NovelAI story") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            } },
+            confirmButton = { Button(onClick = {
+                val name = newStoryProfileName.trim()
+                showCreateStoryProfile = false
+                vm.task {
+                    val id = java.util.UUID.randomUUID().toString()
+                    vm.app.dao.insertBook(Book(id, name, "Personal NovelAI story", BrowserStory.SOURCE, "https://novelai.net/stories"))
+                    vm.app.browserReader.showNovelAi(true)
+                    castBook = id
+                    pendingCast.value = null
+                    tab = 2; voiceSection = 1
+                    vm.message.value = "Created $name. Import its Lorebook here. When ready, link the named story in NovelAI; its voice cast will stay separate."
+                }
+            }, enabled = newStoryProfileName.isNotBlank()) { Text("Create profile") } },
+            dismissButton = { TextButton(onClick = { showCreateStoryProfile = false }) { Text("Cancel") } }
+        )
+        if (showImportChoice) {
+            val target = castBooks.firstOrNull { it.id == lorebookBook }?.title ?: "this book"
+            AlertDialog(onDismissRequest = { showImportChoice = false; lorebookBook = null; lorebookDraft = null },
+                title = { Text("Import voices into $target") },
+                text = { Text("Choose whether to add characters to this story's saved cast or replace only this story's cast. Other stories are not changed. For NovelAI, save each manuscript as its own named story first.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        lorebookReplace = false; showImportChoice = false; lorebookPicker.launch(arrayOf("*/*"))
+                    }) { Text("Add to this cast") }
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(onClick = {
+                            lorebookReplace = true; showImportChoice = false; lorebookPicker.launch(arrayOf("*/*"))
+                        }) { Text("Replace this cast") }
+                        TextButton(onClick = { showImportChoice = false; lorebookBook = null; lorebookDraft = null }) { Text("Cancel") }
+                    }
+                })
+        }
         if (showVoiceSources) VoiceSourcesDialog(voiceCatalog?.let { c -> c.engines.firstOrNull { it.packageName == c.enginePackage }?.label } ?: "your speech app", onEngineVoices = ::engineVoices, onOpen = ::openLink) { showVoiceSources = false }
         startChoice?.let { choice -> StartFromWordDialog(choice, onDismiss = { startChoice = null }) { at ->
             send(NarrationService.START_AT, Bundle().apply {

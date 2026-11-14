@@ -180,14 +180,14 @@ class NovelAiBrowserService : AccessibilityService() {
     private fun showNovelAiControls() {
         val (made, row) = controls()
         hint = TextView(this).apply {
-            text = if (Features.START_HERE) "Tap a word in your story, then Read from here. Resume continues where you stopped, including new text." else "Tap inside your story box, then From top or Resume. Resume continues where you stopped, including new text."
+            text = "Select story text to start there, or start at the first visible word. Resume continues where you stopped."
             textSize = 12f; maxLines = 4; setTextColor(android.graphics.Color.WHITE)
         }
         row.addView(hint)
         actionRow(row, "From top" to { beginRead(BrowserStart.TOP) }, "Resume" to { beginRead(BrowserStart.RESUME) })
-        // Read from here is held back with the other start-at-a-word buttons until it works on the phone.
-        if (Features.START_HERE) actionRow(row, "Read from here" to { beginRead(BrowserStart.AT, fromCursor = true) }, "Check collection" to { beginRead(BrowserStart.TOP, checkOnly = true) })
-        else actionRow(row, "Check collection" to { beginRead(BrowserStart.TOP, checkOnly = true) })
+        actionRow(row, "Read selection" to { beginRead(BrowserStart.AT, fromSelection = true) },
+            "Visible top" to { beginRead(BrowserStart.AT, fromVisibleTop = true) })
+        actionRow(row, "Check collection" to { beginRead(BrowserStart.TOP, checkOnly = true) })
         profileChoice = CheckBox(this).apply {
             text = "Use linked profiles"; textSize = 12f; setTextColor(android.graphics.Color.WHITE)
             isChecked = app.browserReader.useProfiles
@@ -279,19 +279,32 @@ class NovelAiBrowserService : AccessibilityService() {
         if (pageAddress() != next) return
         scope.launch { delay(1500); if (pageAddress() == next && tabPage == page) readPage(fresh = false, expectedUrl = next) }
     }
-    private fun beginRead(start: BrowserStart, checkOnly: Boolean = false, fromCursor: Boolean = false) {
+    private fun beginRead(start: BrowserStart, checkOnly: Boolean = false, fromSelection: Boolean = false,
+                          fromVisibleTop: Boolean = false) {
         // Every tap reports what happened; nothing fails silently.
         if (capture?.isActive == true) { message("Still starting the last request. Wait a moment, then try again."); return }
         val root = verifiedRoot() ?: run { message("Open your NovelAI story, tap inside its story box, then choose a read button."); return }
         val address = BrowserEditorNodes.address(root)
         val editor = try { BrowserEditorNodes.focusedEditor(root) } catch (error: Exception) { message(error.message.orEmpty()); return } finally { root.recycle() }
         val text = try { BrowserEditorNodes.text(editor) } catch (error: Exception) { editor.recycle(); message(error.message.orEmpty()); return }
-        // Read from here: the cursor or selection in the story box, moved to the start of its word.
-        val cursor = if (fromCursor) editor.textSelectionStart.takeIf { it >= 0 }?.let { caret ->
-            val at = BrowserStory.offsetOf(editor.text?.toString().orEmpty(), caret).coerceIn(0, text.length - 1)
-            StartPoint.word(text, at)?.first ?: at
-        } else null
-        if (fromCursor && cursor == null) { editor.recycle(); message("Tap a word in the story box, or select one, then Read from here."); return }
+        // Use a real selection, never an old insertion caret left elsewhere in the manuscript.
+        val raw = editor.text?.toString().orEmpty()
+        val selected = if (fromSelection) BrowserStory.selectionOffset(raw, editor.textSelectionStart, editor.textSelectionEnd) else null
+        val display = resources.displayMetrics
+        val visible = if (fromVisibleTop) BrowserEditorNodes.firstVisibleOffset(editor,
+            android.graphics.Rect(0, 0, display.widthPixels, display.heightPixels)) else null
+        val caret = when { fromSelection -> selected; fromVisibleTop -> visible; else -> null }
+        val cursor = caret?.takeIf { it >= 0 }?.let { atRaw ->
+            val at = if (fromVisibleTop) atRaw else BrowserStory.offsetOf(raw, atRaw)
+            val bounded = at.coerceIn(0, text.length - 1)
+            StartPoint.word(text, bounded)?.first ?: bounded
+        }
+        if ((fromSelection || fromVisibleTop) && cursor == null) {
+            editor.recycle()
+            message(if (fromSelection) "Highlight text in the story box, then tap Read selection."
+                    else "This browser does not expose which story text is visible. Highlight a starting word and tap Read selection.")
+            return
+        }
         capture = scope.launch {
             actions.forEach { it.isEnabled = false }
             profileChoice?.isEnabled = false
@@ -303,6 +316,12 @@ class NovelAiBrowserService : AccessibilityService() {
                 val configured = app.browserSession.value?.takeIf { it.pinnedBook && !it.temporary }
                 // An explicit setup choice still goes through capture's same-story/replacement guard.
                 val saved = configured?.let { app.dao.book(it.bookId) } ?: linked
+                if (configured != null && saved != null && address != null &&
+                    BrowserStory.storyKey(saved.sourceUrl.orEmpty()) != null && BrowserStory.storyKey(address) != null) {
+                    require(BrowserStory.sameStory(saved.sourceUrl.orEmpty(), address)) {
+                        "This tab contains a different NovelAI story. Open the story linked to this profile before reading."
+                    }
+                }
                 var temporary = saved == null && configured == null
                 var begin = start
                 var offset = cursor ?: -1

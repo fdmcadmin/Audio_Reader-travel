@@ -7,6 +7,7 @@ import app.roadleaf.playback.CharacterDelivery
 import app.roadleaf.playback.CharacterPronoun
 import app.roadleaf.playback.LearnedCast
 import app.roadleaf.playback.LearnedGender
+import app.roadleaf.playback.NativeKokoro
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
@@ -14,8 +15,8 @@ import java.util.Locale
 /**
  * Import and export of a book's cast. Reads Roadleaf cast files, story voice-profile files, NovelAI
  * lorebooks (also inside scenario or story files), lorebook JSON in the common "entries" form and
- * character cards. From lorebooks only names, nicknames and pronoun hints are kept; their text is
- * never stored.
+ * character cards. From lorebooks only names, nicknames, pronoun hints and validated local voice
+ * tags are kept; their text is never stored.
  */
 object CastFiles {
     const val MAX_BYTES = 4 * 1024 * 1024
@@ -27,7 +28,8 @@ object CastFiles {
     }
 
     /** The merged cast to save, how many characters the file supplied and how many it described. */
-    data class Imported(val kind: Kind, val cast: BookVoiceCast, val characters: Int, val found: Int, val engine: String = "")
+    data class Imported(val kind: Kind, val cast: BookVoiceCast, val characters: Int, val found: Int, val engine: String = "",
+        val taggedVoices: Int = 0, val correctedModelLabels: Int = 0)
 
     fun read(json: String, existing: BookVoiceCast): Imported {
         require(json.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Choose a cast or lorebook file under 4 MB." }
@@ -36,7 +38,8 @@ object CastFiles {
         return when {
             root.optString("format") == FORMAT -> readCast(root, existing)
             root.optString("format") == "roadleaf-scene-profiles" -> CharacterLorebook.decode(json).let { profiles ->
-                Imported(Kind.PROFILES, CharacterLorebook.merge(existing, profiles), profiles.characters.size, profiles.characters.size, profiles.engine)
+                Imported(Kind.PROFILES, CharacterLorebook.merge(existing, profiles), profiles.characters.size, profiles.characters.size,
+                    profiles.engine, profiles.characters.count { it.voice.isNotBlank() }, profiles.correctedModelLabels)
             }
             novelAi != null -> lorebook(Kind.NOVELAI, novelAiEntries(novelAi), existing)
             root.optString("spec").startsWith("chara_card") || root.has("first_mes") && root.has("name") -> lorebook(Kind.CARD, cardEntries(root), existing)
@@ -105,7 +108,17 @@ object CastFiles {
         require(result.characters.isNotEmpty()) {
             "No characters found. Put character entries in a category named Characters, or give them Gender: or Pronouns: lines."
         }
-        return Imported(kind, merge(existing, result.characters), result.characters.size, result.found)
+        val byId = entries.filter { it.enabled && it.voiceTag != null && it.id.isNotBlank() }.associateBy { it.id }
+        var tagged = 0
+        var corrected = 0
+        val voiced = result.characters.map { character ->
+            val tag = byId[character.profileId]?.voiceTag ?: return@map character
+            tagged++
+            if (NativeKokoro.correctedV11Label(tag.model)) corrected++
+            character.copy(role = CastRole.CUSTOM, voice = NativeKokoro.voiceIdForTag(tag.service, tag.model, tag.voice, tag.sid))
+        }
+        return Imported(kind, merge(existing, voiced), result.characters.size, result.found,
+            if (tagged > 0) NativeKokoro.ENGINE_ID else "", tagged, corrected)
     }
 
     /** Adds new characters and fills nicknames and pronouns for known ones; voices already chosen stay. */
@@ -113,8 +126,11 @@ object CastFiles {
         fun same(a: CastCharacter, b: CastCharacter) = a.profileId.isNotBlank() && a.profileId == b.profileId || a.name.equals(b.name, true)
         val kept = existing.characters.map { current ->
             val fresh = imported.firstOrNull { same(current, it) } ?: return@map current
+            val applyVoice = fresh.role == CastRole.CUSTOM && fresh.voice.isNotBlank() &&
+                (current.voice.isBlank() || current.role == CastRole.AUTO)
             current.copy(aliases = (current.aliases.split(',') + fresh.aliases.split(',')).map(String::trim).filter(String::isNotBlank)
                 .distinctBy { it.lowercase(Locale.ROOT) }.joinToString(",").take(240),
+                role = if (applyVoice) CastRole.CUSTOM else current.role, voice = if (applyVoice) fresh.voice else current.voice,
                 pronoun = current.pronoun.takeUnless { it == CharacterPronoun.AUTO } ?: fresh.pronoun,
                 profileId = current.profileId.ifBlank { fresh.profileId.takeIf { id -> existing.characters.none { it.profileId == id } }.orEmpty() })
         }
@@ -138,7 +154,7 @@ object CastFiles {
         require(entries.length() <= MAX_ENTRIES) { "This lorebook has too many entries." }
         return (0 until entries.length()).mapNotNull { entries.optJSONObject(it) }.map { item ->
             LorebookCast.Entry(item.optString("id"), item.optString("displayName"), strings(item.optJSONArray("keys")), item.optString("text"),
-                categories[item.optString("category")].orEmpty(), item.optBoolean("enabled", true))
+                categories[item.optString("category")] ?: item.optString("category"), item.optBoolean("enabled", true), voiceTag(item))
         }
     }
 
@@ -150,10 +166,18 @@ object CastFiles {
         }
         require(items.size <= MAX_ENTRIES) { "This lorebook has too many entries." }
         return items.map { item ->
-            LorebookCast.Entry("", item.optString("comment").ifBlank { item.optString("name") },
+            LorebookCast.Entry(item.optString("id"), item.optString("comment").ifBlank { item.optString("name") },
                 strings(item.optJSONArray("key") ?: item.optJSONArray("keys")), item.optString("content"), item.optString("category"),
-                !item.optBoolean("disable", false) && item.optBoolean("enabled", true))
+                !item.optBoolean("disable", false) && item.optBoolean("enabled", true), voiceTag(item))
         }
+    }
+
+    private fun voiceTag(item: JSONObject): LorebookCast.VoiceTag? = item.optJSONObject("ttsProfile")?.let { tag ->
+        require(tag.has("service") && tag.has("model") && tag.has("voice") && tag.has("sid")) {
+            "A character voice profile needs service, model, voice and speaker ID."
+        }
+        require(tag.opt("sid") is Number) { "The character voice speaker ID must be a number." }
+        LorebookCast.VoiceTag(tag.getString("service"), tag.getString("model"), tag.getString("voice"), tag.getInt("sid"))
     }
 
     private fun cardEntries(root: JSONObject): List<LorebookCast.Entry> {

@@ -30,6 +30,8 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
             prefs.getString("url", null)?.let { app.websites.remember(it) }
             prefs.edit { putBoolean("quickPicksMigrated", true) }
         }
+        if (app.importer.expeditionFolder() != null) runCatching { app.importer.refreshExpedition() }
+            .onFailure { message.value = "Expedition folder unavailable: ${it.message}" }
     } }
     fun rememberWebsite(url: String) { viewModelScope.launch { runCatching { app.websites.remember(url) }.onFailure { message.value = "Could not save this website shortcut." } } }
     fun forgetWebsite(bookUrl: String) = task { app.websites.forget(bookUrl); message.value = "Quick pick removed" }
@@ -40,6 +42,16 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         try { action() } catch (e: CancellationException) { throw e } catch (e: Exception) { message.value = e.message ?: "Operation failed" } finally { busy.value = false }
     } }
     fun import(uri: Uri) = task { val book = app.importer.importUri(uri); message.value = "Imported ${book.title}" }
+    fun linkExpedition(uri: Uri) = task {
+        val result = app.importer.linkExpeditionFolder(uri)
+        message.value = if (result.added == 0) "Expedition folder linked. Add its original Chapter 1 TXT or validated chapter JSON to begin."
+            else "Expedition linked • ${result.added} chapter${if (result.added == 1) "" else "s"} ready offline"
+    }
+    fun refreshExpedition() = task {
+        val result = app.importer.refreshExpedition()
+        message.value = if (result.added == 0) "No next validated Expedition chapter yet."
+            else "${result.added} new Expedition chapter${if (result.added == 1) "" else "s"} ready offline"
+    }
     fun sample() = task { app.importer.demo(); message.value = "Sample added. Choose Listen to test your offline voice." }
     fun search(query: String) = task { results.value = app.sources.sources.first { it.id == "gutenberg" }.search(query); message.value = "${results.value.size} catalog results" }
     fun download(action: SourceAction.Download) = task { val book = app.importer.download(action); message.value = "Downloaded ${book.title} for offline listening" }

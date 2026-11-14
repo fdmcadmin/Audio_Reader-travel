@@ -13,7 +13,19 @@ if (-not $ProfileSetId) {
     $ProfileSetId = 'profiles-' + [Convert]::ToHexString($hash).ToLowerInvariant().Substring(0,24)
 }
 $profiles = [ordered]@{ format='roadleaf-scene-profiles'; version=1; profileSetId=$ProfileSetId; entries=@($characters | ForEach-Object {
-    [ordered]@{ id=$_.id; displayName=$_.displayName; category='Characters'; enabled=[bool]$_.enabled; keys=@($_.keys) }
+    $source = $_
+    $entry = [ordered]@{ id=$source.id; displayName=$source.displayName; category='Characters'; enabled=[bool]$source.enabled; keys=@($source.keys) }
+    foreach ($field in @('voiceService','voice','pronoun','delivery')) {
+        if ($source.PSObject.Properties.Name -contains $field) { $entry[$field] = [string]$source.$field }
+    }
+    if ($source.ttsProfile) {
+        $tag = $source.ttsProfile
+        $entry['ttsProfile'] = [ordered]@{ service=[string]$tag.service; model=[string]$tag.model; voice=[string]$tag.voice; sid=[int]$tag.sid }
+    }
+    $entry
 }) }
+foreach ($field in @('voiceService','enginePackage','mainCharacter','mainVoice','mainPronoun','narratorVoice')) {
+    if ($module.PSObject.Properties.Name -contains $field) { $profiles[$field] = [string]$module.$field }
+}
 [IO.File]::WriteAllText($target, ($profiles | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
 [pscustomobject]@{ file=$target; profileSetId=$ProfileSetId; characters=$characters.Count; containsModuleText=$false; autoLoad=$false } | ConvertTo-Json

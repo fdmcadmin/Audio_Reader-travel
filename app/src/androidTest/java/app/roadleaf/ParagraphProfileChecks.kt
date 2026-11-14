@@ -34,6 +34,12 @@ class ParagraphProfileChecks(private val app: RoadleafApp, private val report: M
             check(voiced.characters.single().role == CastRole.CUSTOM && voiced.characters.single().pronoun == CharacterPronoun.SHE && voiced.characters.single().delivery == CharacterDelivery.LOWER)
             check(CharacterLorebook.merge(BookVoiceCast(), voiced).mainVoice == "male-one")
             report.add("PASS metadata-only voice bindings decode with explicit pronouns/delivery and main/narrator choices; no module text is needed")
+            val kokoro = CharacterLorebook.decode("""{"format":"roadleaf-scene-profiles","version":1,"profileSetId":"fixture-kokoro","voiceService":"sherpa-onnx-kokoro","entries":[
+                {"id":"char_aster","displayName":"Aster","category":"Characters","keys":["Aster"],"ttsProfile":{"service":"sherpa-onnx","model":"kokoro-multi-lang-v1_0","voice":"af_bella","sid":2}},
+                {"id":"char_morrow","displayName":"Morrow","category":"Characters","keys":["Morrow"],"ttsProfile":{"service":"sherpa-onnx","model":"kokoro-multi-lang-v1_0","voice":"am_puck","sid":18}}]}""")
+            check(kokoro.engine == NativeKokoro.ENGINE_ID && kokoro.characters.map { it.voice } == listOf("kokoro:2", "kokoro:18"))
+            check(CharacterLorebook.merge(BookVoiceCast(), kokoro).profileSetId == "fixture-kokoro")
+            report.add("PASS service-tagged reader profiles bind two distinct Kokoro speakers to one story without module text")
             check(runCatching { CharacterLorebook.parse("""{"lorebookVersion":6,"entries":[{"id":"char_sample","text":"Private module content"}]}""") }.isFailure)
             check(runCatching { CharacterLorebook.parse("""{"format":"roadleaf-scene-profiles","version":1,"profileSetId":"fixture","entries":[{"id":"char_sample","text":"Private module content"}]}""") }.isFailure)
             report.add("PASS full lorebooks/modules and module text disguised as voice metadata are rejected before importing any profiles")

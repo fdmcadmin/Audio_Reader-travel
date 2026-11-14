@@ -2,6 +2,16 @@
 
 All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
+## 0.3.27
+
+- **Expedition chapters import from the chosen Dropbox folder:** Roadleaf recognizes the original Meridian Hunt Chapter 1 TXT and the validated JSON files for Chapters 2 onward. The chapters appear as one offline book and advance in number order. A missing number stops the queue until that chapter arrives.
+- **Direct listen button:** The Meridian Hunt card in Library opens the imported book without searching through other titles.
+- **Oldest books first:** Library lists imported books by added date, then title; chapter order within a book stays numbered.
+
+## 0.3.26
+
+- **Expedition folder link:** Roadleaf remembers the selected folder, imports validated narrative JSON chapters for offline listening, and checks for new chapters when playback reaches the end.
+
 ## 0.3.25
 
 - **Output test report:** the report's status line now names the outputs the app uses, phone and Android Auto: "Phone/Android Auto speaker separation: requires a parked listening check."

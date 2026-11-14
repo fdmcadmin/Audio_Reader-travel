@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
-    # Runs in private and public repositories. APKs are uploaded only for main pushes and manual runs.
+    # Runs in private and public repositories; own-repository PRs can expose their isolated preview artifacts.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -23,18 +23,27 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      - name: Fetch pinned official Sherpa ONNX Android AAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/libs
+          curl --fail --location --retry 3 --silent --show-error \
+            https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.1/sherpa-onnx-2.0.1.aar \
+            -o app/libs/sherpa-onnx-2.0.1.aar
+          echo "a8d09d1d32f3eb8520482c6d3d43fae674681c5b050385967c70a3c2c9bf0ee7  app/libs/sherpa-onnx-2.0.1.aar" | sha256sum -c -
       - run: chmod +x gradlew
-      - run: ./gradlew testDebugUnitTest lintDebug lintCompact assembleDebug assembleCompact assembleDebugAndroidTest --no-daemon
+      - run: ./gradlew testDebugUnitTest lintDebug lintCompact assembleCompact verifyCompactJniContract assembleDebugAndroidTest --no-daemon
       - name: Verify test APKs and write checksums
         shell: bash
         run: |
           set -euo pipefail
-          for apk in app/build/outputs/apk/debug/*.apk app/build/outputs/apk/compact/*.apk; do
+          for apk in app/build/outputs/apk/compact/*.apk; do
             "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
             sha256sum "$apk" > "$apk.sha256"
           done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         with:
           name: roadleaf-debug
           path: |

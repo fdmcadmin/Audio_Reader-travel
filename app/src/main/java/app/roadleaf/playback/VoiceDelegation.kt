@@ -31,6 +31,13 @@ object VoiceDelegation {
     /** Gender only where the engine labels it in the voice ID; never guessed from how a name sounds. */
     fun gender(voice: String): Gender {
         val id = voice.lowercase(Locale.ROOT)
+        // Kokoro v1.0 speaker IDs encode regional accent and gender in their names.
+        val nativeSpeaker = NativeKokoro.speakerName(id)
+        if (nativeSpeaker != null) return when {
+            nativeSpeaker.startsWith("af_") || nativeSpeaker.startsWith("bf_") -> Gender.FEMALE
+            nativeSpeaker.startsWith("am_") || nativeSpeaker.startsWith("bm_") -> Gender.MALE
+            else -> Gender.UNKNOWN
+        }
         return when {
             Regex("en-supertonic-f\\d+").matches(id) -> Gender.FEMALE
             Regex("en-supertonic-m\\d+").matches(id) -> Gender.MALE
