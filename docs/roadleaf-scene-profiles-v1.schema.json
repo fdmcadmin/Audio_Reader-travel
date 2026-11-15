@@ -64,6 +64,15 @@
             "type": "string",
             "maxLength": 160
           },
+          "ttsProfile": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["service", "voice"],
+            "properties": {
+              "service": { "enum": ["supertonic", "com.brahmadeo.supertonic.tts"] },
+              "voice": { "type": "string", "pattern": "^en-supertonic-[FM][1-9][0-9]*$", "maxLength": 160 }
+            }
+          },
           "pronoun": {
             "enum": [
               "AUTO",
