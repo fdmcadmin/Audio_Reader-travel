@@ -11,8 +11,8 @@ android {
         applicationId = "app.roadleaf"
         minSdk = 26
         targetSdk = 35
-        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 30
-        versionName = "0.3.27"
+        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 31
+        versionName = "0.3.28"
         testInstrumentationRunner = "app.roadleaf.ReaderRegressionInstrumentation"
     }
     signingConfigs {
