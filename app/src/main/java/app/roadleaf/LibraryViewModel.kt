@@ -44,13 +44,13 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     fun import(uri: Uri) = task { val book = app.importer.importUri(uri); message.value = "Imported ${book.title}" }
     fun linkExpedition(uri: Uri) = task {
         val result = app.importer.linkExpeditionFolder(uri)
-        message.value = if (result.added == 0) "Expedition folder linked. Add its original Chapter 1 TXT or validated chapter JSON to begin."
-            else "Expedition linked • ${result.added} chapter${if (result.added == 1) "" else "s"} ready offline"
+        message.value = if (result.added == 0 && result.revised == 0) "Expedition folder linked. Add its original Chapter 1 TXT or validated chapter JSON to begin."
+            else "Expedition linked • ${result.added} new, ${result.revised} corrected chapter entries ready offline"
     }
     fun refreshExpedition() = task {
         val result = app.importer.refreshExpedition()
-        message.value = if (result.added == 0) "No next validated Expedition chapter yet."
-            else "${result.added} new Expedition chapter${if (result.added == 1) "" else "s"} ready offline"
+        message.value = if (result.added == 0 && result.revised == 0) "No new or corrected Expedition entries yet."
+            else "${result.added} new, ${result.revised} corrected Expedition chapter entries ready offline"
     }
     fun sample() = task { app.importer.demo(); message.value = "Sample added. Choose Listen to test your offline voice." }
     fun search(query: String) = task { results.value = app.sources.sources.first { it.id == "gutenberg" }.search(query); message.value = "${results.value.size} catalog results" }

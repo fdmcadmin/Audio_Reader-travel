@@ -24,9 +24,19 @@ data class Chapter(@PrimaryKey val id: String, val bookId: String, val ordinal: 
     @Query("SELECT * FROM Chapter WHERE id=:id") suspend fun chapter(id: String): Chapter?
     @Insert suspend fun insertBook(book: Book)
     @Insert suspend fun insertChapters(chapters: List<Chapter>)
+    @Upsert suspend fun upsertChapters(chapters: List<Chapter>)
+    @Delete suspend fun deleteChapters(chapters: List<Chapter>)
+    @Query("DELETE FROM QueueEntry WHERE chapterId=:chapterId") suspend fun removeQueuedChapter(chapterId: String)
     @Transaction suspend fun appendChapters(book: Book?, chapters: List<Chapter>) {
         if (book != null) insertBook(book)
         insertChapters(chapters)
+    }
+    @Transaction suspend fun syncExpedition(book: Book?, chapters: List<Chapter>, removed: List<Chapter>, progress: Progress?) {
+        if (book != null) insertBook(book)
+        removed.forEach { removeQueuedChapter(it.id) }
+        if (removed.isNotEmpty()) deleteChapters(removed)
+        upsertChapters(chapters)
+        if (progress != null) saveBookProgress(progress)
     }
     @Update suspend fun updateChapter(chapter: Chapter)
     @Query("DELETE FROM Chapter WHERE bookId=:bookId") suspend fun removeChapters(bookId: String)
