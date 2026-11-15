@@ -6,6 +6,7 @@ All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
 - Validated `Meridian Hunt - Chapter N Part P - Title.json` files appear as separate entries within the Expedition book. Parts play in number order; a missing part stops the queue at the gap. A part file replaces the prior whole-chapter entry for that chapter number.
 - Check chapters reopens validated files already in the library. Changed text replaces its saved copy while keeping the current paragraph where possible; an edited paragraph resumes at the same paragraph number. Saved chapters stay available offline if their source files are temporarily unavailable.
+- Lorebook import keeps explicit Supertonic voice tags from character entries for the selected book. Existing voice choices stay in place; the lorebook's story text is discarded. Choose Supertonic before import so missing or incompatible voices can be reported.
 
 ## 0.3.27
 

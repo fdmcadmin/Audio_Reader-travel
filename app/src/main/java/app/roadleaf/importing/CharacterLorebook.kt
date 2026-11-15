@@ -21,15 +21,18 @@ object CharacterLorebook {
         require(id.isNotBlank() && id.length <= 120) { "A profile-set ID is required." }
         val entries = root.getJSONArray("entries")
         require(entries.length() <= 512) { "Keep the lorebook to 512 entries." }
-        return Profiles(id, headers((0 until entries.length()).map { i ->
+        val characters = headers((0 until entries.length()).map { i ->
             val item = entries.getJSONObject(i)
             require(!item.has("text") && !item.has("contextConfig") && !item.has("loreBiasGroups")) { "This file contains module content. Import only the collection's voice-profile metadata." }
             Header(item.optString("id"), item.optString("displayName"), item.optString("category"), item.optBoolean("enabled", true),
                 item.optJSONArray("keys")?.let { array -> (0 until minOf(array.length(), 24)).map { array.getString(it) } }.orEmpty(),
-                item.optString("voice").also { require(it.length <= 160 && !it.contains('\n')) { "Keep voice IDs short." } },
+                item.optString("voice").ifBlank { SupertonicTags.voice(item.optJSONObject("ttsProfile")) }
+                    .also { require(it.length <= 160 && !it.contains('\n')) { "Keep voice IDs short." } },
                 item.optString("pronoun", "AUTO").let { raw -> CharacterPronoun.entries.firstOrNull { it.name == raw } ?: error("Unknown character pronoun.") },
                 item.optString("delivery", "FOLLOW_STORY").let { raw -> CharacterDelivery.entries.firstOrNull { it.name == raw } ?: error("Unknown character delivery.") })
-        }), root.optString("enginePackage"), root.optString("mainCharacter"), root.optString("mainVoice"), root.optString("narratorVoice"),
+        })
+        val engine = if (characters.any { it.voice.startsWith("en-supertonic-", true) }) SupertonicTags.ENGINE else root.optString("enginePackage")
+        return Profiles(id, characters, engine, root.optString("mainCharacter"), root.optString("mainVoice"), root.optString("narratorVoice"),
             root.optString("mainPronoun", "AUTO").let { raw -> CharacterPronoun.entries.firstOrNull { it.name == raw } ?: error("Unknown main pronoun.") }).also {
             require(it.engine.length <= 160 && it.mainCharacter.length <= 240 && it.mainVoice.length <= 160 && it.narratorVoice.length <= 160) { "Keep voice settings short." }
         }

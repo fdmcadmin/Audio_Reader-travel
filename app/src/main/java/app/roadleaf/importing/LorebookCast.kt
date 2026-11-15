@@ -6,15 +6,15 @@ import app.roadleaf.playback.CharacterPronoun
 import java.util.Locale
 
 /**
- * Turns lorebook entries into cast characters. Only a character's name, nicknames and a pronoun hint
- * are kept; the entry text is read to recognise characters and is then discarded.
+ * Turns lorebook entries into cast characters. Names, nicknames, pronoun hints and supported voice
+ * tags are kept; the entry text is read to recognise characters and is then discarded.
  */
 object LorebookCast {
     const val MAX_CHARACTERS = 64
 
     /** One lorebook entry in a format-neutral shape. [text] is used only while importing. */
     data class Entry(val id: String = "", val name: String = "", val keys: List<String> = emptyList(), val text: String = "",
-        val category: String = "", val enabled: Boolean = true)
+        val category: String = "", val enabled: Boolean = true, val voice: String = "")
 
     data class Result(val characters: List<CastCharacter>, val found: Int)
 
@@ -72,7 +72,8 @@ object LorebookCast {
     /** The character's display name, without numbering, "— Preset" or bracketed notes; the first key otherwise. */
     fun name(entry: Entry): String? {
         val display = entry.name.replace(Regex("\\s*[\\[(][^\\])]*[\\])]\\s*"), " ").replace(Regex("^\\d+[ \\t]+"), "")
-            .replace(Regex("[ \\t]*[—–-][ \\t]*Preset$"), "").replace(Regex("\\s+"), " ").trim()
+            .replace(Regex("[ \\t]*[—–-][ \\t]*Preset$"), "").replace(Regex("\\s+[—–]\\s+.+$"), "")
+            .replace(Regex("\\s+"), " ").trim()
         return display.takeIf { it.isNotBlank() && it.length <= 80 } ?: entry.keys.firstOrNull(::usableKey)?.trim()
     }
 
@@ -88,13 +89,16 @@ object LorebookCast {
             if (existing != null) {
                 val merged = (existing.aliases.split(',') + aliases).map(String::trim).filter(String::isNotBlank).distinctBy { it.lowercase(Locale.ROOT) }
                 result[key] = existing.copy(aliases = merged.joinToString(",").take(240),
-                    pronoun = existing.pronoun.takeUnless { it == CharacterPronoun.AUTO } ?: pronoun(entry.text))
+                    pronoun = existing.pronoun.takeUnless { it == CharacterPronoun.AUTO } ?: pronoun(entry.text),
+                    role = if (existing.voice.isNotBlank() || entry.voice.isNotBlank()) CastRole.CUSTOM else existing.role,
+                    voice = existing.voice.ifBlank { entry.voice })
                 continue
             }
             found++
             if (result.size >= limit) continue
-            result[key] = CastCharacter(name, aliases.distinctBy { it.lowercase(Locale.ROOT) }.joinToString(",").take(240), CastRole.AUTO,
-                pronoun = pronoun(entry.text), profileId = entry.id.take(120))
+            result[key] = CastCharacter(name, aliases.distinctBy { it.lowercase(Locale.ROOT) }.joinToString(",").take(240),
+                if (entry.voice.isBlank()) CastRole.AUTO else CastRole.CUSTOM,
+                voice = entry.voice, pronoun = pronoun(entry.text), profileId = entry.id.take(120))
         }
         return Result(result.values.toList(), found)
     }

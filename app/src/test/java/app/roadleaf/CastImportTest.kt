@@ -1,6 +1,8 @@
 package app.roadleaf
 
 import app.roadleaf.importing.LorebookCast
+import app.roadleaf.importing.CastFiles
+import app.roadleaf.importing.SupertonicTags
 import app.roadleaf.importing.LorebookCast.Entry
 import app.roadleaf.playback.BookVoiceCast
 import app.roadleaf.playback.CastCharacter
@@ -39,6 +41,7 @@ class CastImportTest {
 
     @Test fun namesAreCleanedAndNicknamesComeFromKeys() {
         assertEquals("Mara Vell", LorebookCast.name(Entry(name = "12 Mara Vell — Preset")))
+        assertEquals("Vesper", LorebookCast.name(Entry(name = "Vesper (\"Ves\") — Towering Partner", keys = listOf("Vesper", "Ves"))))
         assertEquals("Mara", LorebookCast.name(Entry(name = "Mara (protagonist)")))
         assertEquals("Tobin", LorebookCast.name(Entry(name = "", keys = listOf("/tob(in)?/i", "Tobin", "Tob"))))
         val result = LorebookCast.characters(listOf(Entry(id = "a1", name = "Mara Vell", keys = listOf("Mara", "Mara Vell", "/mara/i", "Captain"), text = prose)))
@@ -58,6 +61,23 @@ class CastImportTest {
         val many = LorebookCast.characters((1..70).map { Entry(id = "c$it", name = "Person $it", category = "Characters") })
         assertEquals(64, many.characters.size)
         assertEquals(70, many.found)
+    }
+
+    @Test fun explicitSupertonicTagsBecomeDedicatedVoicesWithoutReplacingSavedChoices() {
+        assertEquals("en-supertonic-F3", SupertonicTags.voice("supertonic", "en-supertonic-F3"))
+        assertEquals("", SupertonicTags.voice("sherpa-onnx", "en-supertonic-F3"))
+        assertEquals("", SupertonicTags.voice("supertonic", "../en-supertonic-F3"))
+        val tagged = LorebookCast.characters(listOf(
+            Entry(id = "char_mara", name = "Mara", category = "Characters", voice = "en-supertonic-F3"),
+            Entry(id = "char_tobin", name = "Tobin", category = "Characters", voice = "en-supertonic-M2"))).characters
+        assertEquals(listOf("en-supertonic-F3", "en-supertonic-M2"), tagged.map { it.voice })
+        assertTrue(tagged.all { it.role == CastRole.CUSTOM })
+        val saved = BookVoiceCast(characters = listOf(CastCharacter("Mara", role = CastRole.CUSTOM, voice = "en-supertonic-F1"),
+            CastCharacter("Tobin", role = CastRole.AUTO)))
+        val merged = CastFiles.merge(saved, tagged)
+        assertEquals("en-supertonic-F1", merged.characters[0].voice)
+        assertEquals("en-supertonic-M2", merged.characters[1].voice)
+        assertEquals(CastRole.CUSTOM, merged.characters[1].role)
     }
 
     @Test fun voiceGenderComesOnlyFromLabelledVoiceIds() {

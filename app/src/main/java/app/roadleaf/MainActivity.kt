@@ -216,6 +216,8 @@ class MainActivity : ComponentActivity() {
                 val imported = CastFiles.read(source, base)
                 // Delegate installed voices from the selected speech engine and accent.
                 val catalog = voiceCatalog?.takeIf { settings.enginePackage.isBlank() || it.enginePackage == settings.enginePackage }
+                if (imported.engine == "com.brahmadeo.supertonic.tts")
+                    require(catalog?.enginePackage == imported.engine) { "Choose Supertonic in Voice, refresh installed voices, then import this lorebook to keep its attached voices." }
                 val installed = catalog?.voices?.filter {
                     it.localeTag.equals(settings.localeTag, true) ||
                         (catalog.enginePackage == NativeKokoro.ENGINE_ID && it.localeTag.startsWith("en-", ignoreCase = true))
@@ -228,7 +230,7 @@ class MainActivity : ComponentActivity() {
                     if (imported.found > imported.characters) append(" (the first ${imported.characters} of ${imported.found})")
                     append(". ")
                     if (imported.kind in setOf(CastFiles.Kind.NOVELAI, CastFiles.Kind.LOREBOOK, CastFiles.Kind.CARD))
-                        append("Only names, nicknames and pronoun hints were kept, not the lorebook text. ")
+                        append("Names, nicknames, pronoun hints and supported voice tags were kept, not the lorebook text. ")
                     if (catalog == null || installed.isEmpty()) append("Tap Refresh installed voices, then import again to give each character a voice.")
                     else {
                         append("${delegated.assigned} got an installed voice")

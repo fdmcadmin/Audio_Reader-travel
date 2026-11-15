@@ -14,8 +14,8 @@ import java.util.Locale
 /**
  * Import and export of a book's cast. Reads Roadleaf cast files, story voice-profile files, NovelAI
  * lorebooks (also inside scenario or story files), lorebook JSON in the common "entries" form and
- * character cards. From lorebooks only names, nicknames and pronoun hints are kept; their text is
- * never stored.
+ * character cards. From lorebooks only names, nicknames, pronoun hints and explicit supported
+ * voice tags are kept; their text is never stored.
  */
 object CastFiles {
     const val MAX_BYTES = 4 * 1024 * 1024
@@ -105,7 +105,8 @@ object CastFiles {
         require(result.characters.isNotEmpty()) {
             "No characters found. Put character entries in a category named Characters, or give them Gender: or Pronouns: lines."
         }
-        return Imported(kind, merge(existing, result.characters), result.characters.size, result.found)
+        return Imported(kind, merge(existing, result.characters), result.characters.size, result.found,
+            if (result.characters.any { it.voice.isNotBlank() }) SupertonicTags.ENGINE else "")
     }
 
     /** Adds new characters and fills nicknames and pronouns for known ones; voices already chosen stay. */
@@ -116,7 +117,9 @@ object CastFiles {
             current.copy(aliases = (current.aliases.split(',') + fresh.aliases.split(',')).map(String::trim).filter(String::isNotBlank)
                 .distinctBy { it.lowercase(Locale.ROOT) }.joinToString(",").take(240),
                 pronoun = current.pronoun.takeUnless { it == CharacterPronoun.AUTO } ?: fresh.pronoun,
-                profileId = current.profileId.ifBlank { fresh.profileId.takeIf { id -> existing.characters.none { it.profileId == id } }.orEmpty() })
+                profileId = current.profileId.ifBlank { fresh.profileId.takeIf { id -> existing.characters.none { it.profileId == id } }.orEmpty() },
+                role = if (current.voice.isBlank() && fresh.voice.isNotBlank()) CastRole.CUSTOM else current.role,
+                voice = current.voice.ifBlank { fresh.voice })
         }
         val added = imported.filter { fresh -> existing.characters.none { same(it, fresh) } }
         val room = (LorebookCast.MAX_CHARACTERS - kept.size).coerceAtLeast(0)
@@ -138,7 +141,7 @@ object CastFiles {
         require(entries.length() <= MAX_ENTRIES) { "This lorebook has too many entries." }
         return (0 until entries.length()).mapNotNull { entries.optJSONObject(it) }.map { item ->
             LorebookCast.Entry(item.optString("id"), item.optString("displayName"), strings(item.optJSONArray("keys")), item.optString("text"),
-                categories[item.optString("category")].orEmpty(), item.optBoolean("enabled", true))
+                categories[item.optString("category")].orEmpty(), item.optBoolean("enabled", true), SupertonicTags.voice(item.optJSONObject("ttsProfile")))
         }
     }
 
@@ -152,7 +155,7 @@ object CastFiles {
         return items.map { item ->
             LorebookCast.Entry("", item.optString("comment").ifBlank { item.optString("name") },
                 strings(item.optJSONArray("key") ?: item.optJSONArray("keys")), item.optString("content"), item.optString("category"),
-                !item.optBoolean("disable", false) && item.optBoolean("enabled", true))
+                !item.optBoolean("disable", false) && item.optBoolean("enabled", true), SupertonicTags.voice(item.optJSONObject("ttsProfile")))
         }
     }
 
