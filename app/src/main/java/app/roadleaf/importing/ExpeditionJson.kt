@@ -5,18 +5,68 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import app.roadleaf.playback.ParagraphResume
 
-data class ExpeditionChapter(val number: Int, val title: String, val text: String)
+data class ExpeditionChapter(val number: Int, val part: Int?, val title: String, val text: String)
 
 /** Reads only validated narrative chapters from a folder the listener selected. */
 object ExpeditionJson {
     const val SOURCE_ID = "expedition-json"
     const val SERIES = "The Meridian Hunt"
     private const val MAX_JSON_BYTES = 2 * 1024 * 1024
-    private val filename = Regex("^Meridian Hunt - Chapter ([1-9][0-9]*) - .+\\.json$", RegexOption.IGNORE_CASE)
+    private val filename = Regex("^Meridian Hunt - Chapter ([1-9][0-9]*)(?: Part ([1-9][0-9]*))? - .+\\.json$", RegexOption.IGNORE_CASE)
     private val legacyFirstName = Regex("^Meridian Hunt - Chapter 1 - (.+)\\.txt$", RegexOption.IGNORE_CASE)
 
     fun chapterNumber(name: String): Int? = filename.matchEntire(name)?.groupValues?.get(1)?.toIntOrNull()
+    fun chapterPart(name: String): Int? = filename.matchEntire(name)?.groupValues?.get(2)?.takeIf(String::isNotEmpty)?.toIntOrNull()
+    fun chapterId(bookId: String, key: Pair<Int, Int?>): String = "$bookId:${key.first}" + (key.second?.let { ":part:$it" } ?: "")
+    fun keyFromId(bookId: String, id: String): Pair<Int, Int?>? {
+        val suffix = id.removePrefix("$bookId:")
+        if (suffix == id) return null
+        val pieces = suffix.split(":part:")
+        if (pieces.size !in 1..2) return null
+        val number = pieces[0].toIntOrNull()?.takeIf { it > 0 } ?: return null
+        val part = if (pieces.size == 2) pieces[1].toIntOrNull()?.takeIf { it > 0 } ?: return null else null
+        return number to part
+    }
+    fun partLabel(part: Int): String = listOf("One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten")
+        .getOrNull(part - 1) ?: part.toString()
+
+    fun relocatePosition(old: String, offset: Int, updated: String): Int {
+        val exact = ParagraphResume.relocate(old, offset, updated)
+        if (exact.matched) return exact.offset
+        val oldParagraph = old.take(offset.coerceIn(0, old.length)).split("\n\n").size - 1
+        val starts = Regex("\\n\\n").findAll(updated).map { it.range.last + 1 }.toList()
+        return ParagraphResume.start(updated, if (oldParagraph == 0) 0 else starts.getOrElse(oldParagraph - 1) { updated.length })
+    }
+
+    /** A published part takes precedence over the old whole-chapter file for the same number. */
+    fun orderedKeys(available: Collection<Pair<Int, Int?>>): List<Pair<Int, Int?>> {
+        val byNumber = available.groupBy { it.first }
+        val numbers = contiguousNumbers(null, byNumber.keys.toList())
+        val result = mutableListOf<Pair<Int, Int?>>()
+        for (number in numbers) {
+            val parts = byNumber.getValue(number).mapNotNull { it.second }.distinct().sorted()
+            if (parts.isEmpty()) result += number to null
+            else if (parts.first() != 1) {
+                if (byNumber.getValue(number).any { it.second == null }) result += number to null else break
+            }
+            else {
+                val contiguous = parts.takeWhileIndexedConsecutive()
+                result += contiguous.map { number to it }
+                if (contiguous.size != parts.size) break
+            }
+        }
+        return result
+    }
+
+    private fun List<Int>.takeWhileIndexedConsecutive(): List<Int> = takeWhileIndexed { index, part -> part == index + 1 }
+
+    private inline fun <T> List<T>.takeWhileIndexed(predicate: (Int, T) -> Boolean): List<T> {
+        val result = mutableListOf<T>()
+        forEachIndexed { index, value -> if (predicate(index, value)) result += value else return result }
+        return result
+    }
 
     /** A missing chapter stops the sequence; a later chapter must never be skipped to. */
     fun contiguousNumbers(after: Int?, available: List<Int>): List<Int> {
@@ -34,12 +84,14 @@ object ExpeditionJson {
 
     fun parse(name: String, source: String): ExpeditionChapter {
         val expected = requireNotNull(chapterNumber(name)) { "Choose a validated Meridian Hunt chapter JSON." }
+        val expectedPart = chapterPart(name)
         val json = JSONObject(source.removePrefix("\uFEFF"))
         require(json.optString("format") == "meridian-narrative-chapter" && json.optInt("version") == 1 &&
             json.optString("series") == SERIES && json.optInt("chapter") == expected &&
             json.optString("sha256").matches(Regex("[0-9a-fA-F]{64}")) && json.optString("validated_at").isNotBlank()) {
             "Chapter $expected is not a validated Meridian Hunt narrative JSON."
         }
+        if (json.has("part")) require(json.optInt("part") == expectedPart) { "Chapter $expected part metadata does not match its filename." }
         val title = json.optString("title").trim()
         require(title.isNotEmpty() && title.length <= 240) { "Chapter $expected has no usable title." }
         val parts = requireNotNull(json.optJSONArray("paragraphs")) { "Chapter $expected has no narrative paragraphs." }
@@ -52,7 +104,7 @@ object ExpeditionJson {
         val body = paragraphs.joinToString("\n\n")
         val text = if (paragraphs.first().equals(title, ignoreCase = true)) body else "$title\n\n$body"
         require(text.length in 40..BookParser.MAX_BYTES) { "Chapter $expected has no usable narrative text." }
-        return ExpeditionChapter(expected, title, text)
+        return ExpeditionChapter(expected, expectedPart, title, text)
     }
 
     /** The first published chapter predates the validated JSON format. Accept only its exact series filename and heading. */
@@ -69,16 +121,16 @@ object ExpeditionJson {
         }
         val body = lines.drop(2).joinToString("\n").trim()
         require(body.length in 40..MAX_JSON_BYTES) { "The legacy Chapter 1 file has no usable narrative text." }
-        return ExpeditionChapter(1, title, "$title\n\n$body")
+        return ExpeditionChapter(1, null, title, "$title\n\n$body")
     }
 
-    fun readNew(context: Context, tree: Uri, after: Int?): List<ExpeditionChapter> {
+    fun readAll(context: Context, tree: Uri): List<ExpeditionChapter> {
         require(DocumentsContract.isTreeUri(tree)) { "Choose the Expedition folder, not a single JSON file." }
         val resolver = context.contentResolver
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
         val columns = arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
             DocumentsContract.Document.COLUMN_MIME_TYPE)
-        val files = mutableMapOf<Int, Pair<String, Uri>>()
+        val files = mutableMapOf<Pair<Int, Int?>, Pair<String, Uri>>()
         var legacyFirst: Pair<String, Uri>? = null
         resolver.query(children, columns, null, null, null)?.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
@@ -94,14 +146,15 @@ object ExpeditionJson {
                     continue
                 }
                 val number = chapterNumber(name) ?: continue
-                require(!files.containsKey(number)) { "More than one validated JSON is named Chapter $number." }
-                files[number] = name to uri
+                val key = number to chapterPart(name)
+                require(!files.containsKey(key)) { "More than one validated JSON is named Chapter $number${key.second?.let { " Part $it" }.orEmpty()}." }
+                files[key] = name to uri
             }
         } ?: error("Cannot list the selected Expedition folder.")
-        val useLegacyFirst = after == null && 1 !in files && legacyFirst != null
-        val numbers = files.keys.toList() + if (useLegacyFirst) listOf(1) else emptyList()
-        return contiguousNumbers(after, numbers).map { number ->
-            val (name, uri) = requireNotNull(files[number] ?: if (number == 1 && useLegacyFirst) legacyFirst else null)
+        val useLegacyFirst = files.keys.none { it.first == 1 } && legacyFirst != null
+        val keys = files.keys + if (useLegacyFirst) listOf(1 to null) else emptyList()
+        return keys.sortedWith(compareBy<Pair<Int, Int?>> { it.first }.thenBy { it.second ?: 0 }).map { (number, part) ->
+            val (name, uri) = requireNotNull(files[number to part] ?: if (number == 1 && useLegacyFirst) legacyFirst else null)
             val bytes = resolver.openInputStream(uri)?.use { input ->
                 val output = ByteArrayOutputStream()
                 val buffer = ByteArray(8192)

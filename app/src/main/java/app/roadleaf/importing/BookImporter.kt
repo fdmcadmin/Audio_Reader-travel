@@ -16,7 +16,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class BookImporter(private val context: Context, private val dao: LibraryDao) {
-    data class ExpeditionRefresh(val book: Book?, val added: Int)
+    data class ExpeditionRefresh(val book: Book?, val added: Int, val revised: Int = 0)
     private val expeditionMutex = Mutex()
     private val expeditionPrefs by lazy { context.getSharedPreferences("expedition-folder", Context.MODE_PRIVATE) }
 
@@ -32,21 +32,56 @@ class BookImporter(private val context: Context, private val dao: LibraryDao) {
     suspend fun refreshExpedition(): ExpeditionRefresh = expeditionMutex.withLock { withContext(Dispatchers.IO) {
         val tree = expeditionFolder() ?: return@withContext ExpeditionRefresh(null, 0)
         val existing = dao.bookBySource(ExpeditionJson.SOURCE_ID, tree.toString())
-        val lastNumber = existing?.let { book -> dao.chapters(book.id).maxOfOrNull { it.ordinal + 1 } }
-        val fresh = ExpeditionJson.readNew(context, tree, lastNumber)
+        val fresh = ExpeditionJson.readAll(context, tree)
         if (fresh.isEmpty()) return@withContext ExpeditionRefresh(existing, 0)
         val book = existing ?: Book(UUID.randomUUID().toString(), ExpeditionJson.SERIES,
             "Expedition library", ExpeditionJson.SOURCE_ID, tree.toString())
+        val previous = if (existing == null) emptyList() else dao.chapters(book.id)
+        val byKey = previous.associateBy { ExpeditionJson.keyFromId(book.id, it.id) }
+        val source = fresh.associateBy { it.number to it.part }
+        val keys = ExpeditionJson.orderedKeys(byKey.keys.filterNotNull() + source.keys)
+        if (keys.isEmpty()) return@withContext ExpeditionRefresh(existing, 0)
         val folder = BookFiles.directory(File(context.filesDir, "books"), book.id)
         check(folder.isDirectory || folder.mkdirs()) { "Could not create the offline Expedition library." }
         val created = mutableListOf<File>()
         try {
-            val chapters = fresh.map { item ->
-                val file = File(folder, "expedition-${item.number}.txt").apply { writeText(item.text); created += this }
-                Chapter("${book.id}:${item.number}", book.id, item.number - 1, item.title, file.absolutePath)
+            var added = 0
+            var revised = 0
+            val chapters = keys.mapIndexed { ordinal, key ->
+                val item = source[key]
+                val prior = byKey[key]
+                if (item == null) requireNotNull(prior).copy(ordinal = ordinal)
+                else {
+                    val title = item.part?.let { "Chapter ${item.number}, Part ${ExpeditionJson.partLabel(it)}: ${item.title}" } ?: item.title
+                    val oldText = prior?.let { File(it.textPath).readText() }
+                    val changed = oldText != item.text
+                    if (prior == null) added++ else if (changed) revised++
+                    val path = if (!changed && prior != null) prior.textPath else
+                        File(folder, "expedition-${item.number}-${item.part ?: 0}-${UUID.randomUUID()}.txt")
+                            .apply { writeText(item.text); created += this }.absolutePath
+                    Chapter(prior?.id ?: ExpeditionJson.chapterId(book.id, key), book.id, ordinal, title, path)
+                }
             }
-            dao.appendChapters(if (existing == null) book else null, chapters)
-            ExpeditionRefresh(book, chapters.size)
+            val selectedIds = chapters.map { it.id }.toSet()
+            val removed = previous.filter { it.id !in selectedIds }
+            val saved = existing?.let { dao.progress(it.id) }
+            val updatedProgress = saved?.let { progress ->
+                val old = previous.firstOrNull { it.id == progress.chapterId }
+                val replacement = chapters.firstOrNull { it.id == progress.chapterId }
+                    ?: old?.let { prior -> ExpeditionJson.keyFromId(book.id, prior.id)?.first }
+                        ?.let { number -> chapters.firstOrNull { chapter -> ExpeditionJson.keyFromId(book.id, chapter.id)?.first == number } }
+                if (replacement == null || old == null) null else {
+                    val oldText = File(old.textPath).readText()
+                    val newText = File(replacement.textPath).readText()
+                    if (old.id == replacement.id && oldText == newText) null
+                    else progress.copy(chapterId = replacement.id,
+                        textOffset = if (progress.textOffset == Int.MAX_VALUE) Int.MAX_VALUE else
+                            ExpeditionJson.relocatePosition(oldText, progress.textOffset, newText), audioMs = 0)
+                }
+            }
+            if (added > 0 || revised > 0 || removed.isNotEmpty() || previous.zip(chapters).any { (a, b) -> a != b })
+                dao.syncExpedition(if (existing == null) book else null, chapters, removed, updatedProgress)
+            ExpeditionRefresh(book, added, revised)
         } catch (error: Exception) { created.forEach(File::delete); throw error }
     } }
     data class Updated(val book: Book, val matchedParagraph: Boolean, val chapterIds: Map<String, String>)

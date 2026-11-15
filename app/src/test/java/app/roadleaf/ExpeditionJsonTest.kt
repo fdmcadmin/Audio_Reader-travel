@@ -27,4 +27,28 @@ class ExpeditionJsonTest {
         assertEquals(listOf(1, 2, 3), ExpeditionJson.contiguousNumbers(null, listOf(chapter.number, 2, 3)))
         assertTrue(runCatching { ExpeditionJson.parseLegacyFirst("The Pirate Expedition.txt", source) }.isFailure)
     }
+    @Test fun partsHaveStableIdsAndPlayInChapterOrder() {
+        val keys = ExpeditionJson.orderedKeys(listOf(1 to null, 2 to null, 3 to null, 4 to null,
+            5 to null, 5 to 2, 5 to 1, 6 to null))
+        assertEquals(listOf(1 to null, 2 to null, 3 to null, 4 to null, 5 to 1, 5 to 2, 6 to null), keys)
+        assertEquals("book:5:part:1", ExpeditionJson.chapterId("book", 5 to 1))
+        assertEquals(5 to 1, ExpeditionJson.keyFromId("book", "book:5:part:1"))
+        assertEquals("One", ExpeditionJson.partLabel(1))
+        assertEquals("book:5", ExpeditionJson.chapterId("book", 5 to null))
+        assertEquals(5, ExpeditionJson.chapterNumber("Meridian Hunt - Chapter 5 Part 1 - The Crossing.json"))
+        assertEquals(1, ExpeditionJson.chapterPart("Meridian Hunt - Chapter 5 Part 1 - The Crossing.json"))
+    }
+    @Test fun missingPartStopsThatChapterWithoutSkippingAhead() {
+        assertEquals(listOf(1 to null, 2 to null, 3 to 1), ExpeditionJson.orderedKeys(
+            listOf(1 to null, 2 to null, 3 to 1, 3 to 3, 4 to null)))
+        assertEquals(emptyList<Pair<Int, Int?>>(), ExpeditionJson.orderedKeys(listOf(2 to null, 3 to null)))
+        assertEquals(listOf(1 to null, 2 to null, 3 to null), ExpeditionJson.orderedKeys(
+            listOf(1 to null, 2 to null, 3 to null, 3 to 2)))
+    }
+    @Test fun correctedTextKeepsTheCurrentParagraphOrItsNumber() {
+        val before = "Title\n\nFirst paragraph.\n\nSecond paragraph.\n\nThird paragraph."
+        val after = "New title\n\nFirst paragraph revised.\n\nSecond paragraph.\n\nThird paragraph."
+        assertEquals(after.indexOf("Second paragraph."), ExpeditionJson.relocatePosition(before, before.indexOf("Second paragraph."), after))
+        assertEquals(after.indexOf("First paragraph revised."), ExpeditionJson.relocatePosition(before, before.indexOf("First paragraph."), after))
+    }
 }

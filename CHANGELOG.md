@@ -2,6 +2,11 @@
 
 All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
+## Unreleased — Expedition parts and corrections
+
+- Validated `Meridian Hunt - Chapter N Part P - Title.json` files appear as separate entries within the Expedition book. Parts play in number order; a missing part stops the queue at the gap. A part file replaces the prior whole-chapter entry for that chapter number.
+- Check chapters reopens validated files already in the library. Changed text replaces its saved copy while keeping the current paragraph where possible; an edited paragraph resumes at the same paragraph number. Saved chapters stay available offline if their source files are temporarily unavailable.
+
 ## 0.3.27
 
 - **Expedition chapters import from the chosen Dropbox folder:** Roadleaf recognizes the original Meridian Hunt Chapter 1 TXT and the validated JSON files for Chapters 2 onward. The chapters appear as one offline book and advance in number order. A missing number stops the queue until that chapter arrives.
