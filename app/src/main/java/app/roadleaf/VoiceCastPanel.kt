@@ -40,6 +40,24 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
         Text("Preview: ${voiceLabel(resolved, catalog?.enginePackage.orEmpty()).ifBlank { "Narrator" }}", style = MaterialTheme.typography.bodySmall)
         TextButton(onClick = { onPreview(resolved, sample, 1f) }, enabled = !busy && matches) { Text("Hear $label") }
     }
+    @Composable fun characterCard(index: Int, character: CastCharacter) {
+        Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
+            Text(character.name, style = MaterialTheme.typography.titleSmall)
+            Text(if (character.role == CastRole.CUSTOM) voiceLabel(character.voice, catalog?.enginePackage.orEmpty()).ifBlank { "Narrator" } else character.role.label,
+                style = MaterialTheme.typography.bodySmall)
+            Text(character.delivery.label, style = MaterialTheme.typography.bodySmall)
+            Row {
+                TextButton(onClick = {
+                    val voice = when (character.role) { CastRole.CUSTOM -> character.voice; CastRole.AUTO -> effective.characters.firstOrNull { it.name == character.name }?.voice.orEmpty(); CastRole.MALE -> auditionMale; CastRole.FEMALE -> auditionFemale; CastRole.NARRATOR -> available.narrator }
+                    val lower = character.role != CastRole.NARRATOR && (character.delivery == CharacterDelivery.LOWER ||
+                        (character.delivery == CharacterDelivery.FOLLOW_STORY && (effective.characters.firstOrNull { it.name == character.name }?.learnedLower ?: character.startsLower)))
+                    onPreview(voice, sample, if (lower) DeliveryCues.LOWER_PITCH else 1f)
+                }, enabled = !busy && matches) { Text("Hear") }
+                TextButton(onClick = { editing = index }) { Text("Edit") }
+                TextButton(onClick = { draft = draft.copy(characters = draft.characters.filterIndexed { i, _ -> i != index }) }) { Text("Remove") }
+            }
+        } }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Character voices", style = MaterialTheme.typography.titleLarge)
         Text("Each new book begins with the narrator. In Automatic, character voices emerge as clear cues repeat, and stay saved for that book.", style = MaterialTheme.typography.bodyMedium)
@@ -58,6 +76,13 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
         if (books.isEmpty()) Text("Add a website book or import a file in Library to set up its cast.")
         else {
             ChoicePicker("Book", selectedBook, books.map { Choice(it.id, it.title) }, onSelect = onBook)
+            val mainCast = draft.characters.withIndex().filter { it.value.profileId.isNotBlank() }
+            if (mainCast.isNotEmpty()) {
+                HorizontalDivider()
+                Text("Main cast", style = MaterialTheme.typography.titleMedium)
+                Text("Voices linked to this book's collection. New characters appear in Additional characters below.", style = MaterialTheme.typography.bodySmall)
+                mainCast.forEach { characterCard(it.index, it.value) }
+            }
             ChoicePicker("Book narrator", draft.narratorVoice, listOf(Choice("", "Use default narrator")) + voices.map { Choice(it.name, voiceLabel(it.name, catalog?.enginePackage.orEmpty())) }, !busy && matches) {
                 draft = draft.copy(narratorVoice = it)
             }
@@ -103,26 +128,9 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
                 draft = draft.copy(mainVoice = available.main(if (draft.mainPronoun == CharacterPronoun.SHE) LearnedGender.FEMALE else LearnedGender.MALE), femaleVoice = available.femaleDefault, maleVoice = available.maleDefault)
             }, enabled = voices.size >= 2) { Text("Suggest installed voices") }
             HorizontalDivider()
-            Text("Recurring characters", style = MaterialTheme.typography.titleMedium)
+            Text(if (mainCast.isEmpty()) "Recurring characters" else "Additional characters", style = MaterialTheme.typography.titleMedium)
             Text("Give a regular character a dedicated voice, or tell Roadleaf which dialogue voice to use. Add aliases for nicknames.", style = MaterialTheme.typography.bodySmall)
-            draft.characters.forEachIndexed { index, character ->
-                Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
-                    Text(character.name, style = MaterialTheme.typography.titleSmall)
-                    Text(if (character.role == CastRole.CUSTOM) voiceLabel(character.voice, catalog?.enginePackage.orEmpty()).ifBlank { "Narrator" } else character.role.label,
-                        style = MaterialTheme.typography.bodySmall)
-                    Text(character.delivery.label, style = MaterialTheme.typography.bodySmall)
-                    Row {
-                        TextButton(onClick = {
-                            val voice = when (character.role) { CastRole.CUSTOM -> character.voice; CastRole.AUTO -> effective.characters.firstOrNull { it.name == character.name }?.voice.orEmpty(); CastRole.MALE -> auditionMale; CastRole.FEMALE -> auditionFemale; CastRole.NARRATOR -> available.narrator }
-                            val lower = character.role != CastRole.NARRATOR && (character.delivery == CharacterDelivery.LOWER ||
-                                (character.delivery == CharacterDelivery.FOLLOW_STORY && (effective.characters.firstOrNull { it.name == character.name }?.learnedLower ?: character.startsLower)))
-                            onPreview(voice, sample, if (lower) DeliveryCues.LOWER_PITCH else 1f)
-                        }, enabled = !busy && matches) { Text("Hear") }
-                        TextButton(onClick = { editing = index }) { Text("Edit") }
-                        TextButton(onClick = { draft = draft.copy(characters = draft.characters.filterIndexed { i, _ -> i != index }) }) { Text("Remove") }
-                    }
-                } }
-            }
+            draft.characters.withIndex().filter { it.value.profileId.isBlank() }.forEach { characterCard(it.index, it.value) }
             OutlinedButton(onClick = { editing = draft.characters.size }, enabled = draft.characters.size < 64) { Text("Add character") }
             HorizontalDivider()
             Text("Learned from this book", style = MaterialTheme.typography.titleMedium)

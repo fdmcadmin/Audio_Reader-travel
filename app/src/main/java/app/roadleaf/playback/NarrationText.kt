@@ -22,6 +22,7 @@ object NarrationText {
         return result.replace(Regex("[\\t ]{2,}"), " ").replace(Regex("(?m)^ +| +$"), "")
     }
     private val symbolsOnly = Regex("^[\\s\\p{P}\\p{S}]+$")
+    private val thoughtLabel = Regex("(?m)^\\s*💭\\s*[^\\n:]{1,80}['’]s\\s+Thoughts\\s*:\\s*", RegexOption.IGNORE_CASE)
     // Watermarks can be in the middle of a story paragraph, rather than a separate footer line.
     private val brand = "free[\\s\\u200B-\\u200D\\uFEFF]*web[\\s\\u200B-\\u200D\\uFEFF]*novel"
     private val siteToken = Regex("(?<![\\p{L}\\p{N}_])(?:https?://)?(?:www[.．])?$brand(?:[\\s\\u200B-\\u200D\\uFEFF]*[.．][\\s\\u200B-\\u200D\\uFEFF]*com)?(?:/[^\\s<>\\\"“”‘’]*)?(?![\\p{L}\\p{N}_])", RegexOption.IGNORE_CASE)
@@ -96,7 +97,8 @@ object NarrationText {
     }
     /** Expand unambiguous English reading conventions after applying the owner's overrides. */
     fun english(text: String): String {
-        var result = text
+        // The owner of a labelled thought keeps their assigned voice; the metadata is not spoken.
+        var result = thoughtLabel.replace(text, "")
         mapOf("Mr" to "Mister", "Mrs" to "Missus", "Ms" to "Miz", "Dr" to "Doctor", "Prof" to "Professor").forEach { (short, spoken) ->
             result = result.replace(Regex("\\b$short\\.(?=\\s+\\p{Lu})"), spoken)
         }

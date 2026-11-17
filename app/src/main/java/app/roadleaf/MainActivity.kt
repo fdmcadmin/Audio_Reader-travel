@@ -204,7 +204,8 @@ class MainActivity : ComponentActivity() {
                         append("Names, nicknames, pronoun hints and supported voice tags were kept, not the lorebook text. ")
                     if (catalog == null || installed.isEmpty()) append("Tap Refresh installed voices, then import again to give each character a voice.")
                     else {
-                        append("${delegated.assigned} got an installed voice")
+                        val ready = delegated.cast.characters.count { it.role == app.roadleaf.playback.CastRole.CUSTOM && it.voice in installed }
+                        append("$ready character${if (ready == 1) "" else "s"} using installed voices")
                         if (delegated.shared.isNotEmpty()) append("; ${delegated.shared.size} share a voice, so more voices would help")
                         append(". ")
                         if (delegated.missing.isNotEmpty()) append("${delegated.missing.size} voice${if (delegated.missing.size == 1) "" else "s"} from the file aren't installed here and were replaced. ")

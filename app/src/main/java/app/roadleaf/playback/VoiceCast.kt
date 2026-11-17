@@ -24,7 +24,8 @@ data class BookVoiceCast(
     }
 }
 data class DialogueState(val closingQuote: Char? = null, val actor: String = "narrator", val lead: String = "", val pitchScale: Float = 1f,
-    val narrativeLead: String = "", val turnTail: String = "", val sceneNames: Set<String> = emptySet(), val sceneExplicit: Boolean = false)
+    val narrativeLead: String = "", val turnTail: String = "", val sceneNames: Set<String> = emptySet(), val sceneExplicit: Boolean = false,
+    val sceneViewpoint: String = "")
 data class CastUtterance(val text: String, val voice: String = "", val pitchScale: Float = 1f)
 data class CastPlan(val utterances: List<CastUtterance>, val next: DialogueState)
 
@@ -39,6 +40,7 @@ class VoiceCastPlanner(private val cast: BookVoiceCast) {
     private val names = actors.keys.sortedByDescending(String::length).joinToString("|") { Regex.escape(it) }
     private val afterName = names.takeIf(String::isNotBlank)?.let { Regex("^\\s*[,—–-]?\\s*($it)\\s+(?:\\p{L}+\\s+){0,2}(?:$verbs)\\b", RegexOption.IGNORE_CASE) }
     private val beforeName = names.takeIf(String::isNotBlank)?.let { Regex("(?<![\\p{L}\\p{N}_])($it)\\s+(?:\\p{L}+\\s+){0,2}(?:$verbs)\\b[^\"“”‘’'\\n.!?]{0,80}$", RegexOption.IGNORE_CASE) }
+    private val taggedThought = names.takeIf(String::isNotBlank)?.let { Regex("(?<![\\p{L}\\p{N}_])($it)['’]s\\s+thoughts\\s*:\\s*$", RegexOption.IGNORE_CASE) }
     private val afterPronoun = Regex("^\\s*[,—–-]?\\s*(he|she|they)\\s+(?:\\p{L}+\\s+){0,2}(?:$verbs)\\b", RegexOption.IGNORE_CASE)
     private val beforePronoun = Regex("\\b(he|she|they)\\s+(?:\\p{L}+\\s+){0,2}(?:$verbs)\\b[^\"“”‘’'\\n.!?]{0,80}$", RegexOption.IGNORE_CASE)
     private val reversed = names.takeIf(String::isNotBlank)?.let { Regex("^\\s*[,—–-]?\\s*(?:$verbs)\\s+($it)(?![\\p{L}\\p{N}_])", RegexOption.IGNORE_CASE) }
@@ -102,6 +104,7 @@ class VoiceCastPlanner(private val cast: BookVoiceCast) {
         return when (wanted) { "he" -> "male"; "she" -> "female"; else -> fallback }
     }
     private fun actor(before: String, after: String, narrative: String, gap: String, fallback: String): String {
+        taggedThought?.find(before.takeLast(180))?.groupValues?.get(1)?.let { actors[it.lowercase(Locale.ROOT)] }?.let { return it }
         namedAfter(after)?.let { return it }
         actionBetweenQuotes(after)?.let { return it }
         beforeName?.findAll(before.takeLast(180))?.lastOrNull()?.groupValues?.get(1)?.let { return actors[it.lowercase(Locale.ROOT)] ?: fallback }
@@ -189,7 +192,9 @@ class VoiceCastPlanner(private val cast: BookVoiceCast) {
                 val evidenceEnd = end ?: (text.length until evidence.length).firstOrNull { DialogueQuotes.closes(evidence, it, closing!!) }
                 val after = afterQuote(evidenceEnd)
                 val gap = if (lastClosed >= 0) text.substring(lastClosed + 1, start) else previous.turnTail + text.substring(0, start)
-                currentActor = actor(before, after, narrative(start), gap, "narrator"); pitchScale = delivery(currentActor, before, after)
+                currentActor = actor(before, after, narrative(start), gap, "narrator")
+                pitchScale = delivery(currentActor, before, after)
+                if (taggedThought?.containsMatchIn(before) == true) pitchScale = (pitchScale * 0.97f).coerceIn(0.7f, 1.3f)
                 if (currentActor == "narrator" && end != null && end - start <= 62 && before.lastOrNull()?.isWhitespace() == true &&
                     before.trimEnd().lastOrNull()?.isLetterOrDigit() == true && text.substring(start + 1, end).none { it in ".!?:;\n" } &&
                     after.trimStart(' ', '\t', ',', ';', ':').firstOrNull()?.isLetterOrDigit() == true) currentActor = "story"
