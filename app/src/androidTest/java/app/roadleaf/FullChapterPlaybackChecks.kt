@@ -41,7 +41,7 @@ class FullChapterPlaybackChecks(private val instrumentation: Instrumentation, pr
             signal
         }
     }
-    fun run(page: LiveWebPage): List<Part> {
+    fun run(page: LiveWebPage, stopAfterMs: Long = Long.MAX_VALUE): List<Part> {
         val parts = linkedMapOf<Int, Part>()
         var changedChapter: String? = null
         val settings = app.listening.settings.value
@@ -60,6 +60,7 @@ class FullChapterPlaybackChecks(private val instrumentation: Instrumentation, pr
             }
         }
         val checked = linkedMapOf<Int, Part>()
+        var layoutChars = 0
         val checkpoints = WebListeningProgress(app.getSharedPreferences("web-listening", 0))
         var previousPosition = -1L
         var stalledMs = 0L; var longestStall = 0L; var currentStall = 0L
@@ -91,7 +92,15 @@ class FullChapterPlaybackChecks(private val instrumentation: Instrumentation, pr
                 }
                 for (part in main { parts.values.toList() }) if (part.offset !in checked) {
                     val expectedOffset = checked.values.lastOrNull()?.let { it.offset + it.chars } ?: 0
-                    check(part.offset == expectedOffset && part.chars in 1..1800 && part.offset + part.chars <= page.text.length) { "Missing or overlapping chapter text at ${part.offset}; expected $expectedOffset" }
+                    check(part.offset >= expectedOffset && part.chars in 1..1800 && part.offset + part.chars <= page.text.length) {
+                        "Overlapping or invalid chapter text at ${part.offset}; expected at least $expectedOffset"
+                    }
+                    val layout = page.text.substring(expectedOffset, part.offset)
+                    check(layout.all(Char::isWhitespace)) {
+                        "Missing non-whitespace chapter text at $expectedOffset: " +
+                            layout.take(20).map { "U+%04X".format(it.code) }.joinToString(",")
+                    }
+                    layoutChars += layout.length
                     val file = File(app.cacheDir, "speech/${part.key}")
                     check(file.isFile && abs(WaveAudio.durationMs(file) - part.durationMs) <= 2 && hasSignal(file)) { "Invalid, missing or silent speech audio for ${part.offset}" }
                     check(abs(part.startMs - checked.values.sumOf { it.durationMs }) <= 2) { "Chapter clock discontinuity" }
@@ -101,6 +110,7 @@ class FullChapterPlaybackChecks(private val instrumentation: Instrumentation, pr
                     check(snapshot.duration > 0 && abs(snapshot.position - snapshot.duration) < 500) { "Chapter ended at the wrong audio position" }
                     break
                 }
+                if (now - started >= stopAfterMs) break
                 check(snapshot.requested) { "Unexpected pause before chapter completion" }
                 val delta = now - lastTick
                 if (!snapshot.playing) { stalledMs += delta; currentStall += delta; longestStall = maxOf(longestStall, currentStall) } else currentStall = 0
@@ -113,9 +123,15 @@ class FullChapterPlaybackChecks(private val instrumentation: Instrumentation, pr
                 Thread.sleep(200)
             }
             val covered = checked.values.sumOf { it.chars }
-            check(covered == page.text.length) { "Chapter text coverage $covered of ${page.text.length}" }
-            report.add("PASS full chapter at 1x behind Android Home: $covered/${page.text.length} original characters, ${checked.size} ordered speech spans, non-silent valid WAVs, zero skipped/overlapping spans and zero episode/position resets")
-            report.add("PASS full chapter reached final audio naturally: elapsed=${SystemClock.elapsedRealtime() - started}ms, audio=${checked.values.sumOf { it.durationMs }}ms, observed buffering=${stalledMs}ms, longest=${longestStall}ms; no automatic next page; waveform/control verification, not a human listening-quality rating")
+            val lastEnd = checked.values.lastOrNull()?.let { it.offset + it.chars } ?: 0
+            val trailing = page.text.substring(lastEnd)
+            if (stopAfterMs == Long.MAX_VALUE) {
+                check(trailing.all(Char::isWhitespace) && covered + layoutChars + trailing.length == page.text.length) {
+                    "Chapter text coverage $covered plus ${layoutChars + trailing.length} layout characters of ${page.text.length}"
+                }
+                report.add("PASS full chapter at 1x behind Android Home: $covered spoken characters plus ${layoutChars + trailing.length} layout characters of ${page.text.length}, ${checked.size} ordered speech spans, non-silent valid WAVs, zero skipped non-whitespace characters or overlaps and zero episode/position resets")
+                report.add("PASS full chapter reached final audio naturally: elapsed=${SystemClock.elapsedRealtime() - started}ms, audio=${checked.values.sumOf { it.durationMs }}ms, observed buffering=${stalledMs}ms, longest=${longestStall}ms; no automatic next page; waveform/control verification, not a human listening-quality rating")
+            } else report.add("PASS chapter opening at 1x: $covered spoken characters across ${checked.size} ordered non-silent WAVs, ending at source offset $lastEnd/${page.text.length}; no skipped non-whitespace characters or overlaps in audited spans; waveform/control verification, not a human listening-quality rating")
             return checked.values.toList()
         } finally {
             main { controller.pause(); controller.removeListener(listener); controller.setPlaybackSpeed(settings.speed); app.listening.save(settings) }

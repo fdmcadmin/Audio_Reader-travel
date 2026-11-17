@@ -5,6 +5,8 @@ import android.app.Instrumentation
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
+import android.media.MediaPlayer
+import android.media.AudioAttributes
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -57,7 +59,13 @@ class ReaderRegressionInstrumentation : Instrumentation() {
     private var handoffChecks = false
     private var tabChecks = false
     private var voiceChecks = false
-    override fun onCreate(arguments: Bundle?) { super.onCreate(arguments); voiceChecks = arguments?.getString("voiceChecks") == "true"; bubbleChecks = arguments?.getString("bubbleChecks") == "true"; handoffChecks = arguments?.getString("handoffChecks") == "true"; tabChecks = arguments?.getString("tabChecks") == "true"; bubblePauseMs = arguments?.getString("bubblePauseMs")?.toLongOrNull() ?: 0L; quickReadChecks = arguments?.getString("quickReadChecks") == "true"; webAppProbe = arguments?.getString("browserWebApp") == "true"; browserChecks = arguments?.getString("browserChecks") == "true"; browserProbe = arguments?.getString("browserProbe") == "true"; paragraphChecks = arguments?.getString("paragraphChecks") == "true"; musicChecks = arguments?.getString("musicChecks") == "true"; liveProbeUrl = arguments?.getString("liveUrl"); focusChecks = arguments?.getString("focusChecks") == "true"; preparationChecks = arguments?.getString("preparationChecks") == "true"; websiteChecks = arguments?.getString("websiteChecks") == "true"; chapterChecks = arguments?.getString("chapterChecks") == "true"; adaptiveChecks = arguments?.getString("adaptiveChecks") == "true"; fullChapter = arguments?.getString("fullChapter") == "true"; recoveryChecks = arguments?.getString("recoveryChecks") == "true"; outputChecks = arguments?.getString("outputChecks") == "true"; universalChecks = arguments?.getString("universalChecks") == "true"; castChecks = arguments?.getString("castChecks") == "true"; start() }
+    private var preserveCast = false
+    private var nativeNarrator = ""
+    private var auditSeconds = 0L
+    private var auditSpeed = 1f
+    private var phraseCheck = false
+    private var startPhrase = ""
+    override fun onCreate(arguments: Bundle?) { super.onCreate(arguments); startPhrase = arguments?.getString("startPhrase").orEmpty(); phraseCheck = arguments?.getString("phraseCheck") == "true"; nativeNarrator = arguments?.getString("nativeNarrator").orEmpty(); auditSeconds = arguments?.getString("auditSeconds")?.toLongOrNull()?.coerceIn(0, 1200) ?: 0; auditSpeed = arguments?.getString("auditSpeed")?.toFloatOrNull()?.coerceIn(0.65f, 2f) ?: 1f; preserveCast = arguments?.getString("preserveCast") == "true"; voiceChecks = arguments?.getString("voiceChecks") == "true"; bubbleChecks = arguments?.getString("bubbleChecks") == "true"; handoffChecks = arguments?.getString("handoffChecks") == "true"; tabChecks = arguments?.getString("tabChecks") == "true"; bubblePauseMs = arguments?.getString("bubblePauseMs")?.toLongOrNull() ?: 0L; quickReadChecks = arguments?.getString("quickReadChecks") == "true"; webAppProbe = arguments?.getString("browserWebApp") == "true"; browserChecks = arguments?.getString("browserChecks") == "true"; browserProbe = arguments?.getString("browserProbe") == "true"; paragraphChecks = arguments?.getString("paragraphChecks") == "true"; musicChecks = arguments?.getString("musicChecks") == "true"; liveProbeUrl = arguments?.getString("liveUrl"); focusChecks = arguments?.getString("focusChecks") == "true"; preparationChecks = arguments?.getString("preparationChecks") == "true"; websiteChecks = arguments?.getString("websiteChecks") == "true"; chapterChecks = arguments?.getString("chapterChecks") == "true"; adaptiveChecks = arguments?.getString("adaptiveChecks") == "true"; fullChapter = arguments?.getString("fullChapter") == "true"; recoveryChecks = arguments?.getString("recoveryChecks") == "true"; outputChecks = arguments?.getString("outputChecks") == "true"; universalChecks = arguments?.getString("universalChecks") == "true"; castChecks = arguments?.getString("castChecks") == "true"; start() }
     private fun <T> main(action: () -> T): T {
         val result = AtomicReference<Result<T>>()
         runOnMainSync { result.set(runCatching(action)) }
@@ -102,8 +110,46 @@ class ReaderRegressionInstrumentation : Instrumentation() {
         val created = mutableListOf<String>()
         val createdWebBooks = mutableListOf<String>()
         val app = targetContext.applicationContext as RoadleafApp
+        var originalSettings: app.roadleaf.playback.ListeningSettings? = null
         val report = mutableListOf<String>()
         try { runBlocking {
+            if (phraseCheck) {
+                val speech = OfflineSpeech(app)
+                val line = "Enter the circle. Show us what you can do."
+                try {
+                    for ((name, engine, voice) in listOf(
+                        Triple("Kokoro", NativeKokoro.ENGINE_ID, "kokoro:2"),
+                        Triple("VCTK", "com.brahmadeo.supertonic.tts", "vctk:0")
+                    )) {
+                        val audio = speech.render(line, app.listening.settings.value.copy(enginePackage = engine, voiceName = voice))
+                        val player = MediaPlayer()
+                        try {
+                            player.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                            player.setDataSource(audio.absolutePath)
+                            player.prepare()
+                            sendStatus(0, Bundle().apply { putString("stream", "PLAYING $name: $line\n") })
+                            repeat(3) {
+                                player.seekTo(0)
+                                player.start()
+                                Thread.sleep(player.duration.toLong() + 1_500L)
+                            }
+                            report.add("PASS $name direct phrase audio ${audio.length()} bytes; ${player.duration}ms")
+                        } finally { player.release() }
+                    }
+                } finally { speech.close() }
+                return@runBlocking
+            }
+            if (nativeNarrator.isNotBlank()) {
+                originalSettings = app.listening.settings.value
+                val voice = when (nativeNarrator) {
+                    "kokoro" -> NativeKokoro.ENGINE_ID to "kokoro:2"
+                    "vctk" -> "com.brahmadeo.supertonic.tts" to "vctk:0"
+                    else -> error("Unknown native narrator check")
+                }
+                app.listening.save(requireNotNull(originalSettings).copy(enginePackage = voice.first, voiceName = voice.second, speed = auditSpeed))
+                report.add("CHECK narrator=${nativeNarrator} at ${auditSpeed}x; original narrator will be restored")
+            }
             if (voiceChecks) {
                 val speech = OfflineSpeech(app)
                 try {
@@ -154,7 +200,7 @@ class ReaderRegressionInstrumentation : Instrumentation() {
             }.get(20, TimeUnit.SECONDS)
             liveProbeUrl?.let { requested ->
                 val url = requireNotNull(LiveWebPages.canonical(requested))
-                if (fullChapter) command(NarrationService.RESET_LEARNING, Bundle().apply { putString("book", url.substringBeforeLast('/')) })
+                if (fullChapter && !preserveCast) command(NarrationService.RESET_LEARNING, Bundle().apply { putString("book", url.substringBeforeLast('/')) })
                 val reader = startActivitySync(Intent(targetContext, WebReaderActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("url", url).putExtra("loadNewBook", true))
                 activity = reader
@@ -166,6 +212,16 @@ class ReaderRegressionInstrumentation : Instrumentation() {
                     .nextValue() as? String ?: error("No bounded page DOM")
                 val page = LiveWebPages.parse(html, url)
                 report.add("PASS live page DOM: ${page.title}; ${page.text.length} readable characters; next=${page.nextUrl}; page bytes are not exported")
+                if (startPhrase.isNotBlank()) {
+                    val offset = page.text.indexOf(startPhrase)
+                    check(offset >= 0) { "Requested entrance not present in Chapter 23" }
+                    val selected = command(NarrationService.START_AT, Bundle().apply { putString("url", url); putInt("offset", offset) })
+                    check(selected.resultCode == SessionResult.RESULT_SUCCESS) { "Could not start at the requested entrance" }
+                    awaitCondition(90_000) { main { active.isPlaying && active.currentMediaItem?.mediaMetadata?.extras?.getInt("offset", -1) == offset } }
+                    report.add("PASS playing requested entrance from source offset $offset with $nativeNarrator; Live Caption active")
+                    Thread.sleep((auditSeconds.takeIf { it > 0 } ?: 45L) * 1_000L)
+                    return@runBlocking
+                }
                 awaitCondition { main { active.currentMediaItem?.mediaId?.startsWith("web:") == true && active.playbackState == Player.STATE_READY && active.playWhenReady } }
                 check(main { active.currentMediaItem?.mediaMetadata?.extras?.getString("webUrl") } == page.url)
                 check(main { active.currentMediaItem?.mediaMetadata?.artist?.toString() } == page.bookTitle)
@@ -179,14 +235,15 @@ class ReaderRegressionInstrumentation : Instrumentation() {
                 if (fullChapter) {
                     // Use this exact normal-page snapshot throughout the audit. A later DOM
                     // mutation must not change the coverage target after speech was accepted.
-                    command(NarrationService.RESET_LEARNING, Bundle().apply { putString("book", url.substringBeforeLast('/')) })
+                    if (!preserveCast) command(NarrationService.RESET_LEARNING, Bundle().apply { putString("book", url.substringBeforeLast('/')) })
                     val selection = command(NarrationService.WEB_BEGIN, Bundle().apply { putString("url", url); putBoolean("fresh", true) }).extras.getLong("selection")
                     command(NarrationService.WEB_PAGE, Bundle().apply {
                         putString("url", page.url); putString("title", page.title); putString("bookTitle", page.bookTitle)
                         putString("text", page.text); putString("next", page.nextUrl); putLong("selection", selection); putBoolean("autoNext", false)
                     })
                     awaitCondition { main { active.isPlaying && active.currentMediaItem?.mediaId == "web:$url" } }
-                    FullChapterPlaybackChecks(this@ReaderRegressionInstrumentation, app, active, report).run(page)
+                    FullChapterPlaybackChecks(this@ReaderRegressionInstrumentation, app, active, report).run(page,
+                        if (auditSeconds > 0) auditSeconds * 1_000 else Long.MAX_VALUE)
                 }
                 command(NarrationService.WEB_PAUSE)
                 return@runBlocking
@@ -354,6 +411,7 @@ class ReaderRegressionInstrumentation : Instrumentation() {
                 }
             }
             main { controller?.pause(); controller?.release(); activity?.finish() }
+            originalSettings?.let(app.listening::save)
         }
         finish(if (report.any { it.startsWith("FAIL") }) Activity.RESULT_CANCELED else Activity.RESULT_OK,
             Bundle().apply { putString("stream", report.joinToString("\n", "\n", "\n")) })
