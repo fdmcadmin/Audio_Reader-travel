@@ -10,8 +10,8 @@ import kotlinx.coroutines.withContext
 class CastSpeechRenderer(private val speech: OfflineSpeech, private val cache: File) {
     data class Rendered(val file: File, val next: DialogueState)
     suspend fun render(text: String, cast: BookVoiceCast, previous: DialogueState, settings: ListeningSettings,
-        pronounce: (String) -> String, lookahead: String = ""): Rendered {
-        val plan = SceneCast.plan(text, cast, previous, lookahead)
+        pronounce: (String) -> String, lookahead: String = "", explicitSpeakers: List<String> = emptyList()): Rendered {
+        val plan = SceneCast.plan(text, cast, previous, lookahead, explicitSpeakers)
         val files = mutableListOf<File>()
         for (utterance in plan.utterances) {
             val replaced = pronounce(utterance.text)

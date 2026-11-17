@@ -4,10 +4,14 @@ import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
 import org.json.JSONObject
+import org.json.JSONArray
 import java.io.ByteArrayOutputStream
+import java.io.File
 import app.roadleaf.playback.ParagraphResume
 
-data class ExpeditionChapter(val number: Int, val part: Int?, val title: String, val text: String)
+data class ExpeditionChapter(val number: Int, val part: Int?, val title: String, val text: String,
+    val speakers: List<String> = emptyList(), val paragraphSpeakers: List<List<String>> = emptyList(),
+    val speakerOffsets: List<Int> = emptyList())
 
 /** Reads only validated narrative chapters from a folder the listener selected. */
 object ExpeditionJson {
@@ -104,8 +108,56 @@ object ExpeditionJson {
         val body = paragraphs.joinToString("\n\n")
         val text = if (paragraphs.first().equals(title, ignoreCase = true)) body else "$title\n\n$body"
         require(text.length in 40..BookParser.MAX_BYTES) { "Chapter $expected has no usable narrative text." }
-        return ExpeditionChapter(expected, expectedPart, title, text)
+        val cast = json.optJSONArray("speakers")?.let { list ->
+            (0 until list.length()).map { index ->
+                require(list.opt(index) is String) { "Chapter $expected has an invalid speaker name." }
+                list.getString(index).trim().also { require(it.isNotEmpty() && it.length <= 80) }
+            }.distinct()
+        }.orEmpty()
+        val assignments = json.optJSONArray("paragraph_speakers")?.let { list ->
+            require(list.length() == paragraphs.size) { "Chapter $expected speaker metadata must match its paragraphs." }
+            (0 until list.length()).map { index ->
+                when (val entry = list.opt(index)) {
+                    is String -> listOf(entry)
+                    is JSONArray -> (0 until entry.length()).map { position ->
+                        require(entry.opt(position) is String) { "Chapter $expected has an invalid paragraph speaker." }
+                        entry.getString(position)
+                    }
+                    else -> error("Chapter $expected has an invalid paragraph speaker.")
+                }.map(String::trim).also { names ->
+                    require(names.all { it.isNotEmpty() && it.length <= 80 && (cast.isEmpty() || it in cast) }) {
+                        "Chapter $expected has a speaker missing from its cast."
+                    }
+                }
+            }
+        }.orEmpty()
+        var at = if (text == body) 0 else title.length + 2
+        val offsets = paragraphs.map { paragraph -> at.also { at += paragraph.length + 2 } }
+        return ExpeditionChapter(expected, expectedPart, title, text, cast, assignments, offsets)
     }
+
+    fun saveSpeakers(path: String, chapter: ExpeditionChapter) {
+        val file = File("$path.speakers.json")
+        if (chapter.paragraphSpeakers.isEmpty()) { if (file.exists()) file.delete(); return }
+        val entries = JSONArray()
+        chapter.paragraphSpeakers.forEachIndexed { index, names ->
+            entries.put(JSONObject().put("offset", chapter.speakerOffsets[index]).put("names", JSONArray(names)))
+        }
+        file.writeText(JSONObject().put("speakers", JSONArray(chapter.speakers)).put("paragraphs", entries).toString())
+    }
+
+    fun speakersFor(path: String, offset: Int): List<String> = runCatching {
+        val file = File("$path.speakers.json")
+        if (!file.isFile) return@runCatching emptyList()
+        val entries = JSONObject(file.readText()).getJSONArray("paragraphs")
+        var chosen: JSONArray? = null
+        for (index in 0 until entries.length()) {
+            val entry = entries.getJSONObject(index)
+            if (entry.getInt("offset") > offset) break
+            chosen = entry.getJSONArray("names")
+        }
+        chosen?.let { list -> (0 until list.length()).map(list::getString) }.orEmpty()
+    }.getOrDefault(emptyList())
 
     /** The first published chapter predates the validated JSON format. Accept only its exact series filename and heading. */
     fun parseLegacyFirst(name: String, source: String): ExpeditionChapter {

@@ -53,13 +53,14 @@ object SceneCast {
             CastRole.NARRATOR -> cast.narratorVoice
         } }.orEmpty()
     }
-    fun plan(text: String, cast: BookVoiceCast, previous: DialogueState, lookahead: String = ""): CastPlan {
-        if (!cast.sceneOnly) return VoiceCastPlanner(cast).plan(text, previous, lookahead)
+    fun plan(text: String, cast: BookVoiceCast, previous: DialogueState, lookahead: String = "", explicitSpeakers: List<String> = emptyList()): CastPlan {
+        if (!cast.sceneOnly) return VoiceCastPlanner(cast).plan(text, previous, lookahead, explicitSpeakers)
         var state = previous
         val utterances = mutableListOf<CastUtterance>()
         fun renderSection(value: String, ahead: String = "") {
             val explicit = state.sceneExplicit
-            val active = (state.sceneNames + if (explicit) emptySet() else names(cast, value + ahead)).take(120).toSet()
+            val active = (state.sceneNames + names(cast, explicitSpeakers.joinToString(" ")) +
+                if (explicit) emptySet() else names(cast, value + ahead)).take(120).toSet()
             val people = cast.characters.filter { it.name.lowercase(Locale.ROOT) in active }
             val inactiveVoices = cast.characters.filter { it !in people }.map { it.voice }.filter(String::isNotBlank).toSet() +
                 if ("@main" !in active && cast.mainVoice.isNotBlank()) setOf(cast.mainVoice) else emptySet()
@@ -67,7 +68,7 @@ object SceneCast {
             val scoped = cast.copy(sceneOnly = false, characters = people,
                 mainCharacter = cast.mainCharacter.takeIf { "@main" in active }.orEmpty(), mainVoice = cast.mainVoice.takeIf { "@main" in active }.orEmpty(),
                 storyVoice = storyVoice)
-            val result = VoiceCastPlanner(scoped).plan(value, state, ahead)
+            val result = VoiceCastPlanner(scoped).plan(value, state, ahead, explicitSpeakers)
             utterances.addAll(result.utterances); state = result.next.copy(sceneNames = active, sceneExplicit = explicit, sceneViewpoint = state.sceneViewpoint)
         }
         fun section(value: String, ahead: String = "") {

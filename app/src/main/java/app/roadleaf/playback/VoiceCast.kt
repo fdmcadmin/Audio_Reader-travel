@@ -140,7 +140,7 @@ class VoiceCastPlanner(private val cast: BookVoiceCast) {
         }
         return DeliveryCues.local(subject, before, after) ?: if (character?.let { it.learnedLower ?: it.startsLower } == true) DeliveryCues.LOWER_PITCH else 1f
     }
-    fun plan(text: String, previous: DialogueState = DialogueState(), lookahead: String = ""): CastPlan {
+    fun plan(text: String, previous: DialogueState = DialogueState(), lookahead: String = "", explicitSpeakers: List<String> = emptyList()): CastPlan {
         if (!cast.enabled) return CastPlan(listOf(CastUtterance(text, cast.narratorVoice)), DialogueState())
         val result = mutableListOf<CastUtterance>()
         fun append(value: String, actor: String, pitchScale: Float = 1f) {
@@ -153,6 +153,11 @@ class VoiceCastPlanner(private val cast: BookVoiceCast) {
         var cursor = 0
         var closing = previous.closingQuote
         var currentActor = previous.actor
+        var explicitIndex = 0
+        fun explicitActor(): String? {
+            val name = explicitSpeakers.getOrNull(explicitIndex++) ?: return null
+            return if (name.equals("Narrator", true)) "narrator" else actors[name.lowercase(Locale.ROOT)]
+        }
         var pitchScale = previous.pitchScale
         var lastClosed = -1
         // The next already-staged source window supplies evidence only. Never emit it or
@@ -199,10 +204,10 @@ class VoiceCastPlanner(private val cast: BookVoiceCast) {
                 val evidenceEnd = end ?: (text.length until evidence.length).firstOrNull { DialogueQuotes.closes(evidence, it, closing!!) }
                 val after = afterQuote(evidenceEnd)
                 val gap = if (lastClosed >= 0) text.substring(lastClosed + 1, start) else previous.turnTail + text.substring(0, start)
-                currentActor = actor(before, after, narrative(start), gap, "narrator")
+                currentActor = explicitActor() ?: actor(before, after, narrative(start), gap, "narrator")
                 pitchScale = delivery(currentActor, before, after)
                 if (taggedThought?.containsMatchIn(before) == true) pitchScale = (pitchScale * 0.97f).coerceIn(0.7f, 1.3f)
-                if (currentActor == "narrator" && end != null && end - start <= 62 && before.lastOrNull()?.isWhitespace() == true &&
+                if (explicitSpeakers.isEmpty() && currentActor == "narrator" && end != null && end - start <= 62 && before.lastOrNull()?.isWhitespace() == true &&
                     before.trimEnd().lastOrNull()?.isLetterOrDigit() == true && text.substring(start + 1, end).none { it in ".!?:;\n" } &&
                     after.trimStart(' ', '\t', ',', ';', ':').firstOrNull()?.isLetterOrDigit() == true) currentActor = "story"
                 if (end == null) { append(text.substring(cursor), currentActor, pitchScale); cursor = text.length }

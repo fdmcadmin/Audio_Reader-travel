@@ -929,8 +929,10 @@ class NarrationService : MediaLibraryService() {
         val prior = learnedBooks.getOrPut(bookKey) { app.learnedCasts.get(bookKey) }
         val adaptation = AdaptiveCast.prepare(profile, prior, adaptiveVoices, part.chapter.id, part.offset, part.text, context)
         val next = withContext(Dispatchers.IO) { current.peekFollowing() }
+        val explicitSpeakers = if (part.book.sourceId == ExpeditionJson.SOURCE_ID)
+            withContext(Dispatchers.IO) { ExpeditionJson.speakersFor(part.chapter.textPath, part.offset) } else emptyList()
         val rendered = CastSpeechRenderer(speech, cacheDir).render(cleaned(part), adaptation.cast, context, sessionSettings, pronounce,
-            lookahead = next?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty())
+            lookahead = next?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty(), explicitSpeakers = explicitSpeakers)
         val file = rendered.file
         val duration = withContext(Dispatchers.IO) { WaveAudio.durationMs(file) }
         trace { "render ready offset=${part.offset} elapsed=${SystemClock.elapsedRealtime() - started}ms duration=${duration}ms" }

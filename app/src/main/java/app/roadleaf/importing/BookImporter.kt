@@ -59,6 +59,7 @@ class BookImporter(private val context: Context, private val dao: LibraryDao) {
                     val path = if (!changed && prior != null) prior.textPath else
                         File(folder, "expedition-${item.number}-${item.part ?: 0}-${UUID.randomUUID()}.txt")
                             .apply { writeText(item.text); created += this }.absolutePath
+                    ExpeditionJson.saveSpeakers(path, item)
                     Chapter(prior?.id ?: ExpeditionJson.chapterId(book.id, key), book.id, ordinal, title, path)
                 }
             }
