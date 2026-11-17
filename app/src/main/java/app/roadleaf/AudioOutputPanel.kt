@@ -14,7 +14,7 @@ import app.roadleaf.playback.HeadphoneMusicPolicy
     val choices = listOf(Choice("", "System default / Android Auto")) + state.devices.map { Choice(it.key, it.name, it.kind) } +
         if (state.selected.key.isNotBlank() && state.devices.none { it.key == state.selected.key })
             listOf(Choice(state.selected.key, "${state.selected.name} · disconnected")) else emptyList()
-    ChoicePicker("Narration output", state.selected.key, choices, enabled, onSelect)
+    ChoicePicker("Narration output", state.selected.key, choices, enabled, onSelect = onSelect)
     Text(state.message, style = MaterialTheme.typography.bodyMedium)
     if (state.reportedDevice.isNotBlank()) Text("Last reported by Android: ${state.reportedDevice}", style = MaterialTheme.typography.bodySmall)
     if (state.lastResult.isNotBlank()) Text(state.lastResult, style = MaterialTheme.typography.bodySmall)

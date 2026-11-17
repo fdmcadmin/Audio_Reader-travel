@@ -10,7 +10,7 @@ import java.util.Locale
  * tags are kept; the entry text is read to recognise characters and is then discarded.
  */
 object LorebookCast {
-    const val MAX_CHARACTERS = 64
+    const val MAX_CHARACTERS = 120
 
     /** One lorebook entry in a format-neutral shape. [text] is used only while importing. */
     data class Entry(val id: String = "", val name: String = "", val keys: List<String> = emptyList(), val text: String = "",

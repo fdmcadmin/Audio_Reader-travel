@@ -13,18 +13,27 @@ import java.util.Locale
 
 internal data class Choice(val id: String, val title: String, val detail: String = "")
 
-@Composable internal fun ChoicePicker(label: String, selected: String, choices: List<Choice>, enabled: Boolean = true, onSelect: (String) -> Unit) {
+@Composable internal fun ChoicePicker(label: String, selected: String, choices: List<Choice>, enabled: Boolean = true,
+    onPreview: ((String) -> Unit)? = null, onSelect: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
     Text(label, style = MaterialTheme.typography.labelLarge)
-    OutlinedButton(onClick = { expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+    OutlinedButton(onClick = { query = ""; expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
         Text(choices.firstOrNull { it.id == selected }?.title ?: selected.ifBlank { "Automatic" }, Modifier.weight(1f)); Text("▾")
     }
     if (expanded) AlertDialog(onDismissRequest = { expanded = false }, title = { Text(label) }, text = {
-        LazyColumn(Modifier.heightIn(max = 360.dp)) {
-            items(choices, key = { it.id }) { choice ->
+        Column {
+            if (choices.size > 20) OutlinedTextField(query, { query = it }, label = { Text("Find a voice") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            val shown = if (query.isBlank()) choices else choices.filter {
+                it.title.contains(query, true) || it.id.contains(query, true) || it.detail.contains(query, true)
+            }
+            LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                items(shown, key = { it.id }) { choice ->
                 ListItem(headlineContent = { Text(choice.title) }, supportingContent = { if (choice.detail.isNotBlank()) Text(choice.detail) },
                     leadingContent = { RadioButton(selected = selected == choice.id, onClick = null) },
+                    trailingContent = { if (onPreview != null && choice.id.isNotBlank()) TextButton(onClick = { onPreview(choice.id) }) { Text("Hear") } },
                     modifier = Modifier.clickable { onSelect(choice.id); expanded = false })
+                }
             }
         }
     }, confirmButton = { TextButton(onClick = { expanded = false }) { Text("Close") } })
@@ -96,4 +105,7 @@ internal fun voiceLabel(name: String, engine: String): String = if (engine == "c
     "en-supertonic-F4" -> "Olivia • Crisp, confident"
     "en-supertonic-F5" -> "Emily • Kind, gentle"
     else -> Regex("en-supertonic-([MF])(\\d+)").matchEntire(name)?.let { "${if (it.groupValues[1] == "F") "Female" else "Male"} voice ${it.groupValues[2]}" } ?: name
+} else if (engine == HayaiVoices.ENGINE && HayaiVoices.isEnglishKokoro(name)) {
+    val speaker = HayaiVoices.speaker(name)
+    "Kokoro ${speaker.substringAfter('_').replace('_', ' ').replaceFirstChar { it.titlecase() }} • ${if (speaker.startsWith('b', true)) "British" else "American"} ${if (HayaiVoices.gender(name) == VoiceDelegation.Gender.FEMALE) "female" else "male"}"
 } else name

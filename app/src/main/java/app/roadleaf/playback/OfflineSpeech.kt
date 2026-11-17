@@ -73,8 +73,13 @@ class OfflineSpeech(private val context: Context,
     }
     suspend fun catalog(requestedEngine: String): SpeechCatalog = mutex.withLock {
         val tts = connect(requestedEngine)
+        val installedVoices = offlineVoices(tts, refresh = true)
+        if (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
+            android.util.Log.d("RoadleafVoices", "engine=$enginePackage offline=${installedVoices.size} englishKokoro=${installedVoices.count { HayaiVoices.isEnglishKokoro(it.name) }} first=${installedVoices.firstOrNull()?.name.orEmpty()}")
         SpeechCatalog(tts.engines.map { SpeechEngineOption(it.name, it.label) }.sortedBy { it.label },
-            offlineVoices(tts, refresh = true).sortedWith(compareBy<Voice> { it.locale.toLanguageTag() }.thenBy { it.name }).map { OfflineVoiceOption(it.name, it.locale.toLanguageTag(), it.quality, it.latency) }, enginePackage)
+            installedVoices.sortedWith(compareBy<Voice> { it.locale.toLanguageTag() }.thenBy { it.name }).map {
+                OfflineVoiceOption(it.name, HayaiVoices.locale(it.name, it.locale.toLanguageTag(), enginePackage), it.quality, it.latency)
+            }, enginePackage)
     }
     suspend fun render(text: String, settings: ListeningSettings, fallbackVoice: String? = null): File = mutex.withLock {
         SpeechRecovery.run(reset = {
@@ -119,7 +124,9 @@ class OfflineSpeech(private val context: Context,
         val requestedVoice = if (fallbackVoice != null && voices.none { it.name == settings.voiceName }) fallbackVoice else settings.voiceName
         return if (requestedVoice.isNotBlank()) voices.firstOrNull { it.name == requestedVoice }
             ?: error("The selected offline voice is unavailable. Refresh Voice settings and choose another voice.")
-        else voices.filter { it.locale.language == locale.language }.sortedWith(compareBy<Voice> { it.locale.toLanguageTag() != settings.localeTag }.thenBy { it.latency }.thenByDescending { it.quality }.thenBy { it.name }).firstOrNull()
+        else voices.filter { HayaiVoices.supports(it.name, it.locale, locale, enginePackage) }.sortedWith(compareBy<Voice> {
+            HayaiVoices.locale(it.name, it.locale.toLanguageTag(), enginePackage) != settings.localeTag
+        }.thenBy { it.latency }.thenByDescending { it.quality }.thenBy { it.name }).firstOrNull()
             ?: error("Install an offline ${locale.displayLanguage} voice in Android Text-to-speech settings, then refresh voices. Network voices are disabled.")
     }
     private suspend fun renderAttempt(text: String, settings: ListeningSettings, fallbackVoice: String?): File {

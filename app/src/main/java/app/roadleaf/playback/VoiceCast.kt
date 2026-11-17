@@ -11,14 +11,21 @@ data class BookVoiceCast(
     val enabled: Boolean = true, val mainCharacter: String = "", val mainVoice: String = "",
     val maleVoice: String = "", val femaleVoice: String = "", val characters: List<CastCharacter> = emptyList(),
     val adaptive: Boolean = true, val followViewpoint: Boolean = true, val chapterViewpoints: Map<String, String> = emptyMap(),
-    val mainPronoun: CharacterPronoun = CharacterPronoun.AUTO, val storyVoice: String = "", val narratorVoice: String = "", val sceneOnly: Boolean = false, val profileSetId: String = ""
+    val mainPronoun: CharacterPronoun = CharacterPronoun.AUTO, val storyVoice: String = "", val narratorVoice: String = "", val sceneOnly: Boolean = false, val profileSetId: String = "",
+    val exclusiveVoices: Boolean = false
 ) {
     fun validated(): BookVoiceCast {
-        require(mainCharacter.length <= 240 && characters.size <= 64) { "Keep the cast to 64 characters and short names/aliases." }
+        require(mainCharacter.length <= 240 && characters.size <= 120) { "Keep the cast to 120 characters and short names/aliases." }
         characters.forEach { require(it.name.isNotBlank() && it.name.length <= 80 && it.aliases.length <= 240) { "Enter a short character name and aliases." } }
         require(characters.map { it.name.trim().lowercase(Locale.ROOT) }.distinct().size == characters.size) { "Each character needs a unique name." }
         require(profileSetId.length <= 120 && characters.all { it.profileId.length <= 120 }) { "Keep profile identifiers short." }
         require(characters.map { it.profileId }.filter(String::isNotBlank).let { it.distinct().size == it.size }) { "Character profile IDs must be unique." }
+        if (exclusiveVoices) require(characters.filter { it.role == CastRole.CUSTOM }.map { it.voice }.filter(String::isNotBlank).let { it.distinct().size == it.size }) {
+            "A dedicated voice is already assigned to another character. Choose an unused voice."
+        }
+        if (exclusiveVoices && narratorVoice.isNotBlank()) require(characters.none { it.role == CastRole.CUSTOM && it.voice == narratorVoice }) {
+            "The book narrator's voice is already assigned to a character. Choose a different narrator."
+        }
         require(chapterViewpoints.size <= 64 && chapterViewpoints.all { (key, name) -> key.isNotBlank() && key.length <= 2048 && name.isNotBlank() && name.length <= 80 }) { "Keep chapter narrator choices to 64 short entries." }
         return copy(mainCharacter = mainCharacter.trim(), characters = characters.map { it.copy(name = it.name.trim(), aliases = it.aliases.trim()) })
     }

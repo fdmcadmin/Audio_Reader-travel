@@ -34,7 +34,7 @@ object SceneCast {
                     at = boundary.range.last + 1
                 }
                 val tail = text.substring(at)
-                if (!state.sceneExplicit) state = state.copy(sceneNames = (state.sceneNames + names(cast, tail)).take(65).toSet())
+                if (!state.sceneExplicit) state = state.copy(sceneNames = (state.sceneNames + names(cast, tail)).take(120).toSet())
                 thoughtTags.findAll(tail).lastOrNull()?.let { tag ->
                     viewpoint(cast, tag.groupValues[1]).takeIf(String::isNotBlank)?.let { state = state.copy(sceneViewpoint = it) }
                 }
@@ -59,7 +59,7 @@ object SceneCast {
         val utterances = mutableListOf<CastUtterance>()
         fun renderSection(value: String, ahead: String = "") {
             val explicit = state.sceneExplicit
-            val active = (state.sceneNames + if (explicit) emptySet() else names(cast, value + ahead)).take(65).toSet()
+            val active = (state.sceneNames + if (explicit) emptySet() else names(cast, value + ahead)).take(120).toSet()
             val people = cast.characters.filter { it.name.lowercase(Locale.ROOT) in active }
             val inactiveVoices = cast.characters.filter { it !in people }.map { it.voice }.filter(String::isNotBlank).toSet() +
                 if ("@main" !in active && cast.mainVoice.isNotBlank()) setOf(cast.mainVoice) else emptySet()

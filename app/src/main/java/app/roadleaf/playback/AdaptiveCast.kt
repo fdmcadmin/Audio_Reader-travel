@@ -27,8 +27,11 @@ data class AdaptiveVoices(val engine: String = "", val narrator: String = "", va
         fun from(catalog: SpeechCatalog, settings: ListeningSettings): AdaptiveVoices {
             val narrator = settings.voiceName.ifBlank { catalog.voices.filter { it.localeTag.equals(settings.localeTag, true) }
                 .sortedWith(compareBy<OfflineVoiceOption> { it.latency }.thenByDescending { it.quality }.thenBy { it.name }).firstOrNull()?.name.orEmpty() }
-            if (catalog.enginePackage != "com.brahmadeo.supertonic.tts") return AdaptiveVoices(catalog.enginePackage, narrator)
             val voices = catalog.voices.filter { it.localeTag.equals(settings.localeTag, true) }.map { it.name }
+            if (catalog.enginePackage == HayaiVoices.ENGINE) return AdaptiveVoices(catalog.enginePackage, narrator,
+                voices.filter { HayaiVoices.gender(it) == VoiceDelegation.Gender.MALE }.sorted(),
+                voices.filter { HayaiVoices.gender(it) == VoiceDelegation.Gender.FEMALE }.sorted())
+            if (catalog.enginePackage != "com.brahmadeo.supertonic.tts") return AdaptiveVoices(catalog.enginePackage, narrator)
             return AdaptiveVoices(catalog.enginePackage, narrator,
                 voices.filter { Regex("en-supertonic-M[0-9]+").matches(it) }.sorted(),
                 voices.filter { Regex("en-supertonic-F[0-9]+").matches(it) }.sorted())
@@ -38,7 +41,7 @@ data class AdaptiveVoices(val engine: String = "", val narrator: String = "", va
 
 /** Pure, bounded learning. Render using prior evidence; commit next only when the source span is queued. */
 object AdaptiveCast {
-    const val MAX_PEOPLE = 64
+    const val MAX_PEOPLE = 120
     const val MAX_SEEN = 256
     private val povVerbs = "thought|wondered|realized|realised|decided|remembered|noticed|felt"
     private val viewpointVerbs = povVerbs.split('|').toSet()
@@ -72,7 +75,8 @@ object AdaptiveCast {
         bindings.indices.forEach { index ->
             var person = bindings[index]
             val isMain = mainName.isNotBlank() && id(person.name) == id(mainName)
-            val ready = person.turns >= 2 && person.windows >= 2
+            val ready = person.turns >= 2 && person.windows >= 2 ||
+                (profile.exclusiveVoices && person.engine == voices.engine && person.voice.isNotBlank())
             if (prior.windows > 0 && isMain && person.turns > 0) {
                 val choice = profile.mainVoice.ifBlank {
                     person.voice.takeIf { person.engine == voices.engine }.orEmpty().ifBlank { bookVoices.main(person.gender) }
@@ -82,13 +86,14 @@ object AdaptiveCast {
             } else if (prior.windows > 0 && ready && profile.characters.none { id(it.name) == id(person.name) && it.role != CastRole.AUTO }) {
                 val recurring = person.turns >= 6 && person.windows >= 3 &&
                     (mainPerson?.let { person.turns * 2 >= it.turns } ?: (person.turns >= 8 && person.windows >= 4))
-                var dedicated = person.voice.takeIf { person.engine == voices.engine && person.gender != LearnedGender.UNKNOWN }.orEmpty()
+                var dedicated = person.voice.takeIf { person.engine == voices.engine &&
+                    (person.gender != LearnedGender.UNKNOWN || profile.exclusiveVoices) }.orEmpty()
                 if (dedicated.isBlank() && recurring) {
                     val pool = when (person.gender) { LearnedGender.MALE -> voices.male; LearnedGender.FEMALE -> voices.female; else -> emptyList() }
                     dedicated = pool.firstOrNull { it !in reserved }.orEmpty()
                     if (dedicated.isNotBlank()) { person = person.copy(voice = dedicated, engine = voices.engine); reserved.add(dedicated) }
                 }
-                val role = when { dedicated.isNotBlank() -> CastRole.CUSTOM; person.gender == LearnedGender.MALE -> CastRole.MALE; person.gender == LearnedGender.FEMALE -> CastRole.FEMALE; else -> CastRole.NARRATOR }
+                val role = when { dedicated.isNotBlank() -> CastRole.CUSTOM; profile.exclusiveVoices -> CastRole.NARRATOR; person.gender == LearnedGender.MALE -> CastRole.MALE; person.gender == LearnedGender.FEMALE -> CastRole.FEMALE; else -> CastRole.NARRATOR }
                 // An unknown learned name must not suppress a clear, local "she said" / "he said" tag.
                 // Explicit owner assignments to Narrator remain in profile.characters and keep priority.
                 if (role != CastRole.NARRATOR && profile.characters.none { id(it.name) == id(person.name) }) automatic.add(CastCharacter(person.name, role = role, voice = dedicated))
@@ -96,22 +101,51 @@ object AdaptiveCast {
             bindings[index] = person
         }
         fun pronoun(person: LearnedCharacter?) = when (person?.gender) { LearnedGender.MALE -> CharacterPronoun.HE; LearnedGender.FEMALE -> CharacterPronoun.SHE; else -> CharacterPronoun.AUTO }
-        val active = if (prior.windows == 0) profile.copy(mainVoice = "", maleVoice = "", femaleVoice = "", characters = if (profile.sceneOnly) profile.characters.map { it.copy(role = CastRole.NARRATOR) } else emptyList(), storyVoice = ChapterPerspectives.voice(profile, prior, chapter))
+        val observed = if (profile.sceneOnly && SceneCast.breaks.replace(text, "").isBlank()) prior else
+            observe(prior.copy(people = bindings), profile, chapter, offset, text, context)
+        val newcomers = mutableListOf<CastCharacter>()
+        val nextPeople = if (profile.exclusiveVoices) observed.people.map { person ->
+            val configured = profile.characters.firstOrNull { id(it.name) == id(person.name) }
+            val fresh = person.voice.isBlank() && (configured == null || configured.role == CastRole.AUTO)
+            val gender = when {
+                configured?.pronoun == CharacterPronoun.SHE -> LearnedGender.FEMALE
+                configured?.pronoun == CharacterPronoun.HE -> LearnedGender.MALE
+                person.femaleCues > 0 && person.maleCues == 0 -> LearnedGender.FEMALE
+                person.maleCues > 0 && person.femaleCues == 0 -> LearnedGender.MALE
+                else -> LearnedGender.UNKNOWN
+            }
+            val pool = when (gender) { LearnedGender.FEMALE -> voices.female; LearnedGender.MALE -> voices.male; else -> emptyList() }
+            val choice = if (fresh && person.turns > 0 && (configured != null || profile.characters.size + newcomers.size < 120))
+                pool.firstOrNull { it !in reserved } else null
+            if (choice == null) person else {
+                reserved.add(choice)
+                if (configured == null) newcomers.add(CastCharacter(person.name, role = CastRole.CUSTOM, voice = choice,
+                    pronoun = if (gender == LearnedGender.FEMALE) CharacterPronoun.SHE else CharacterPronoun.HE))
+                person.copy(voice = choice, engine = voices.engine)
+            }
+        } else observed.people
+        val next = observed.copy(people = nextPeople)
+        val openingCharacters = profile.characters.map { person ->
+            val learnedVoice = nextPeople.firstOrNull { id(it.name) == id(person.name) }?.takeIf { it.engine == voices.engine }?.voice.orEmpty()
+            if (person.role == CastRole.CUSTOM && person.voice.isNotBlank()) person
+            else if (person.role == CastRole.AUTO && learnedVoice.isNotBlank()) person.copy(role = CastRole.CUSTOM, voice = learnedVoice)
+            else person.copy(role = CastRole.NARRATOR)
+        }
+        val active = if (prior.windows == 0) profile.copy(mainVoice = "", maleVoice = "", femaleVoice = "",
+            characters = openingCharacters + newcomers, storyVoice = ChapterPerspectives.voice(profile, prior, chapter))
             else profile.copy(mainCharacter = profile.mainCharacter.ifBlank { mainName }, mainVoice = mainVoice, maleVoice = male, femaleVoice = female,
                 mainPronoun = profile.mainPronoun.takeUnless { it == CharacterPronoun.AUTO } ?: pronoun(mainPerson),
-                characters = (automatic + profile.characters).map { character ->
-                    val person = bindings.firstOrNull { id(it.name) == id(character.name) }
+                characters = (automatic + profile.characters + newcomers).map { character ->
+                    val person = nextPeople.firstOrNull { id(it.name) == id(character.name) }
                     character.copy(role = if (character.role != CastRole.AUTO) character.role else when {
                         person != null && person.engine == voices.engine && person.voice.isNotBlank() -> CastRole.CUSTOM
-                        person?.gender == LearnedGender.FEMALE -> CastRole.FEMALE
-                        person?.gender == LearnedGender.MALE -> CastRole.MALE
+                        !profile.exclusiveVoices && person?.gender == LearnedGender.FEMALE -> CastRole.FEMALE
+                        !profile.exclusiveVoices && person?.gender == LearnedGender.MALE -> CastRole.MALE
                         else -> CastRole.NARRATOR
                     }, voice = if (character.role == CastRole.AUTO) person?.takeIf { it.engine == voices.engine }?.voice.orEmpty() else character.voice,
                         learnedLower = person?.takeIf { it.attitudeWindows >= 2 }?.let { it.attitudeScore < 0 },
                         pronoun = character.pronoun.takeUnless { it == CharacterPronoun.AUTO } ?: pronoun(person))
                 })
-        val next = if (profile.sceneOnly && SceneCast.breaks.replace(text, "").isBlank()) prior
-            else observe(prior.copy(people = bindings), profile, chapter, offset, text, context)
         return Plan(if (prior.windows == 0) active else active.copy(storyVoice = ChapterPerspectives.voice(active, prior, chapter)), next)
     }
 

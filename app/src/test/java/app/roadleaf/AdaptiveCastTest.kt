@@ -18,6 +18,32 @@ class AdaptiveCastTest {
         assertEquals(1, first.next.windows); assertEquals("Arlo", first.next.people.single().name)
         assertEquals("M2", plan(profile, first.next, 1).cast.mainVoice)
     }
+    @Test fun anExplicitlyTaggedNewSpeakerGetsAnUnusedVoiceAtIntroduction() {
+        val profile = BookVoiceCast(exclusiveVoices = true, sceneOnly = true)
+        val first = plan(profile, text = "Mira said, \"Ready,\" she answered.")
+        val person = first.next.people.single { it.name == "Mira" }
+        assertTrue(person.voice in voices.female)
+        assertEquals(person.voice, first.cast.characters.single { it.name == "Mira" }.voice)
+        assertEquals(person.voice, plan(profile, first.next, 1, "Mira said, \"Go.\"").cast.characters.single { it.name == "Mira" }.voice)
+    }
+    @Test fun importedProfileGetsVoiceOnlyWhenItSpeaks() {
+        val profile = BookVoiceCast(exclusiveVoices = true, characters = listOf(
+            CastCharacter("Mira", role = CastRole.AUTO, pronoun = CharacterPronoun.SHE),
+            CastCharacter("Nora", role = CastRole.AUTO, pronoun = CharacterPronoun.SHE)))
+        val opening = plan(profile, text = "Mira said, \"Ready.\"")
+        val assigned = opening.cast.characters.first { it.name == "Mira" }
+        assertEquals(CastRole.CUSTOM, assigned.role)
+        assertTrue(assigned.voice in voices.female)
+        assertEquals(CastRole.NARRATOR, opening.cast.characters.first { it.name == "Nora" }.role)
+        assertEquals(assigned.voice, plan(profile, opening.next, 1, "Mira said, \"Go.\"").cast.characters.first { it.name == "Mira" }.voice)
+    }
+    @Test fun importedAssignedCharacterCanSpeakInTheOpeningPassage() {
+        val fixed = CastCharacter("Mira", role = CastRole.CUSTOM, voice = "F3", pronoun = CharacterPronoun.SHE)
+        val profile = BookVoiceCast(exclusiveVoices = true, sceneOnly = true, characters = listOf(fixed))
+        val first = plan(profile, text = "Mira said, \"Ready.\"")
+        assertEquals("F3", first.cast.characters.single().voice)
+        assertEquals("F3", SceneCast.plan("Mira said, \"Ready.\"", first.cast, DialogueState()).utterances.last().voice)
+    }
     @Test fun repeatedClearTagsBuildSharedFemaleVoiceWithoutNameGuessing() {
         val text = "Mira was a woman. Mira said, \"Wait for the others.\""
         val one = plan(text = text).next
@@ -158,9 +184,9 @@ class AdaptiveCastTest {
         assertNotEquals("M2", jamesNarrator.main(LearnedGender.MALE))
     }
     @Test fun learningStorageIsBoundedEvenForVeryLargeSerials() {
-        val state = LearnedCast(1000, people = (0 until 64).map { LearnedCharacter("Name${('A'.code + it / 26).toChar()}${('A'.code + it % 26).toChar()}") },
+        val state = LearnedCast(1000, people = (0 until AdaptiveCast.MAX_PEOPLE).map { LearnedCharacter("Name${('A'.code + it / 26).toChar()}${('A'.code + it % 26).toChar()}") },
             seen = (0 until 256).map { it.toString() })
         val result = plan(state = state, text = "Zelda said, \"Another road.\"").next
-        assertEquals(64, result.people.size); assertEquals(256, result.seen.size); assertFalse(result.people.any { it.name == "Zelda" })
+        assertEquals(AdaptiveCast.MAX_PEOPLE, result.people.size); assertEquals(256, result.seen.size); assertFalse(result.people.any { it.name == "Zelda" })
     }
 }

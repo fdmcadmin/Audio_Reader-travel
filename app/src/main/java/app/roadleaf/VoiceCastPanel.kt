@@ -21,6 +21,8 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     var editing by remember(selectedBook) { mutableStateOf<Int?>(null) }
     var error by remember { mutableStateOf("") }
     var showLearned by remember(selectedBook) { mutableStateOf(false) }
+    var castSearch by remember(selectedBook) { mutableStateOf("") }
+    var showAllProfiles by remember(selectedBook) { mutableStateOf(false) }
     var reset by remember { mutableStateOf(false) }
     val matches = catalog != null && (settings.enginePackage.isBlank() || catalog.enginePackage == settings.enginePackage)
     val voices = if (matches) catalog!!.voices.filter { it.localeTag == settings.localeTag } else emptyList()
@@ -34,7 +36,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     val auditionMain = draft.mainVoice.ifBlank { effective.mainVoice }
     val sample = "We should stay together. I know the way home."
     @Composable fun role(label: String, voice: String, sample: String, update: (String) -> Unit) {
-        ChoicePicker(label, voice, choices, !busy && matches, update)
+        ChoicePicker(label, voice, choices, !busy && matches, onSelect = update)
         val auto = when (label) { "Main character" -> auditionMain; "Female dialogue" -> auditionFemale; else -> auditionMale }
         val resolved = auto.ifBlank { available.narrator }
         Text("Preview: ${voiceLabel(resolved, catalog?.enginePackage.orEmpty()).ifBlank { "Narrator" }}", style = MaterialTheme.typography.bodySmall)
@@ -43,7 +45,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     @Composable fun characterCard(index: Int, character: CastCharacter) {
         Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
             Text(character.name, style = MaterialTheme.typography.titleSmall)
-            Text(if (character.role == CastRole.CUSTOM) voiceLabel(character.voice, catalog?.enginePackage.orEmpty()).ifBlank { "Narrator" } else character.role.label,
+            Text(if (draft.exclusiveVoices && character.voice.isBlank() && character.role == CastRole.AUTO) "Needs a dedicated voice" else if (character.role == CastRole.CUSTOM) voiceLabel(character.voice, catalog?.enginePackage.orEmpty()).ifBlank { "Narrator" } else character.role.label,
                 style = MaterialTheme.typography.bodySmall)
             Text(character.delivery.label, style = MaterialTheme.typography.bodySmall)
             Row {
@@ -72,6 +74,15 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             Switch(checked = draft.sceneOnly, onCheckedChange = { draft = draft.copy(sceneOnly = it) })
             Text("Activate profiles only in their scene")
         }
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Switch(checked = draft.exclusiveVoices, onCheckedChange = { enabled ->
+                val claimed = mutableSetOf<String>()
+                draft = draft.copy(exclusiveVoices = enabled, characters = if (!enabled) draft.characters else draft.characters.map { person ->
+                    if (person.role == CastRole.CUSTOM && person.voice.isNotBlank() && !claimed.add(person.voice)) person.copy(role = CastRole.AUTO, voice = "") else person
+                })
+            })
+            Text("Reserve each dedicated voice for one character")
+        }
         Text("Scene breaks: ***, ---, ⁂, ###, or [Scene: names]. Names/aliases activate profiles within that scene; the next break clears them. Descriptions are never read aloud.", style = MaterialTheme.typography.bodySmall)
         if (books.isEmpty()) Text("Add a website book or import a file in Library to set up its cast.")
         else {
@@ -79,11 +90,18 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             val mainCast = draft.characters.withIndex().filter { it.value.profileId.isNotBlank() }
             if (mainCast.isNotEmpty()) {
                 HorizontalDivider()
-                Text("Main cast", style = MaterialTheme.typography.titleMedium)
-                Text("Voices linked to this book's collection. New characters appear in Additional characters below.", style = MaterialTheme.typography.bodySmall)
-                mainCast.forEach { characterCard(it.index, it.value) }
+                Text("Saved profiles · ${mainCast.size}", style = MaterialTheme.typography.titleMedium)
+                val assigned = mainCast.count { it.value.role == CastRole.CUSTOM && it.value.voice.isNotBlank() }
+                Text("$assigned assigned · ${mainCast.size - assigned} waiting for a dedicated voice. Search to choose a character; assigned voices are reserved.", style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(castSearch, { castSearch = it }, label = { Text("Find a character") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                val matches = mainCast.filter { castSearch.isBlank() || it.value.name.contains(castSearch, true) || it.value.aliases.contains(castSearch, true) }
+                (if (showAllProfiles || castSearch.isNotBlank()) matches else matches.take(8)).forEach { characterCard(it.index, it.value) }
+                if (castSearch.isBlank() && matches.size > 8) TextButton(onClick = { showAllProfiles = !showAllProfiles }) {
+                    Text(if (showAllProfiles) "Show fewer profiles" else "Show all ${matches.size} profiles")
+                }
             }
-            ChoicePicker("Book narrator", draft.narratorVoice, listOf(Choice("", "Use default narrator")) + voices.map { Choice(it.name, voiceLabel(it.name, catalog?.enginePackage.orEmpty())) }, !busy && matches) {
+            val dedicatedVoices = if (draft.exclusiveVoices) draft.characters.filter { it.role == CastRole.CUSTOM }.map { it.voice }.toSet() else emptySet()
+            ChoicePicker("Book narrator", draft.narratorVoice, listOf(Choice("", "Use default narrator")) + voices.filter { it.name !in dedicatedVoices }.map { Choice(it.name, voiceLabel(it.name, catalog?.enginePackage.orEmpty())) }, !busy && matches) {
                 draft = draft.copy(narratorVoice = it)
             }
             Text("This book can have its own narrator. Other books keep their saved voices.", style = MaterialTheme.typography.bodySmall)
@@ -131,7 +149,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             Text(if (mainCast.isEmpty()) "Recurring characters" else "Additional characters", style = MaterialTheme.typography.titleMedium)
             Text("Give a regular character a dedicated voice, or tell Roadleaf which dialogue voice to use. Add aliases for nicknames.", style = MaterialTheme.typography.bodySmall)
             draft.characters.withIndex().filter { it.value.profileId.isBlank() }.forEach { characterCard(it.index, it.value) }
-            OutlinedButton(onClick = { editing = draft.characters.size }, enabled = draft.characters.size < 64) { Text("Add character") }
+            OutlinedButton(onClick = { editing = draft.characters.size }, enabled = draft.characters.size < 120) { Text("Add character") }
             HorizontalDivider()
             Text("Learned from this book", style = MaterialTheme.typography.titleMedium)
             Text(if (learned.windows == 0) "Starting with the narrator. Nothing learned yet." else
@@ -161,12 +179,20 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     }, confirmButton = { TextButton(onClick = { onReset(selectedBook); reset = false }) { Text("Restart learning") } }, dismissButton = { TextButton(onClick = { reset = false }) { Text("Cancel") } })
     editing?.let { index ->
         var character by remember(index) { mutableStateOf(draft.characters.getOrNull(index) ?: CastCharacter("")) }
+        val reserved = if (!draft.exclusiveVoices) emptySet() else draft.characters.withIndex().filter {
+            it.index != index && it.value.role == CastRole.CUSTOM && it.value.voice.isNotBlank()
+        }.map { it.value.voice }.toSet() + available.narrator.takeIf(String::isNotBlank).orEmpty()
+        val characterChoices = if (!draft.exclusiveVoices) choices else choices.filter { it.id.isBlank() || it.id !in reserved }
         AlertDialog(onDismissRequest = { editing = null }, title = { Text("Character voice") }, text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(character.name, { character = character.copy(name = it.take(80)) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(character.aliases, { character = character.copy(aliases = it.take(240)) }, label = { Text("Aliases, separated by commas") }, modifier = Modifier.fillMaxWidth())
                 ChoicePicker("Voice assignment", character.role.name, CastRole.entries.map { Choice(it.name, it.label) }) { character = character.copy(role = CastRole.valueOf(it)) }
-                if (character.role == CastRole.CUSTOM) ChoicePicker("Dedicated voice", character.voice, choices, !busy && matches) { character = character.copy(voice = it) }
+                if (character.role == CastRole.CUSTOM) {
+                    Text("${characterChoices.size - 1} available voices", style = MaterialTheme.typography.bodySmall)
+                    ChoicePicker("Dedicated voice", character.voice, characterChoices, !busy && matches,
+                        onPreview = { voice -> onPreview(voice, sample, 1f) }) { character = character.copy(voice = it) }
+                }
                 ChoicePicker("Pronouns", character.pronoun.name, CharacterPronoun.entries.map { Choice(it.name, it.label) }) { character = character.copy(pronoun = CharacterPronoun.valueOf(it)) }
                 ChoicePicker("Delivery", character.delivery.name, CharacterDelivery.entries.map { Choice(it.name, it.label) }) { character = character.copy(delivery = CharacterDelivery.valueOf(it)) }
                 if (character.delivery == CharacterDelivery.FOLLOW_STORY) {
@@ -178,6 +204,6 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             val characters = draft.characters.toMutableList()
             if (index < characters.size) characters[index] = character else characters.add(character)
             draft = draft.copy(characters = characters); editing = null
-        }, enabled = character.name.isNotBlank()) { Text("Done") } }, dismissButton = { TextButton(onClick = { editing = null }) { Text("Cancel") } })
+        }, enabled = character.name.isNotBlank() && (character.role != CastRole.CUSTOM || character.voice.isNotBlank())) { Text("Done") } }, dismissButton = { TextButton(onClick = { editing = null }) { Text("Cancel") } })
     }
 }

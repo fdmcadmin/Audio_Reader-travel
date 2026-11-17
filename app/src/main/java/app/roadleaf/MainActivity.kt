@@ -193,7 +193,7 @@ class MainActivity : ComponentActivity() {
                 if (imported.engine == "com.brahmadeo.supertonic.tts")
                     require(catalog?.enginePackage == imported.engine) { "Choose Supertonic in Voice, refresh installed voices, then import this lorebook to keep its attached voices." }
                 val installed = catalog?.voices?.filter { it.localeTag.equals(settings.localeTag, true) }?.map { it.name }.orEmpty()
-                val delegated = VoiceDelegation.assign(imported.cast, installed, imported.cast.narratorVoice.ifBlank { settings.voiceName })
+                val delegated = VoiceDelegation.assign(imported.cast, installed, settings.voiceName.ifBlank { imported.cast.narratorVoice })
                 vm.app.casts.save(book, delegated.cast)
                 send(NarrationService.APPLY_CAST, Bundle().apply { putString("book", book) })
                 vm.message.value = buildString {
@@ -206,6 +206,7 @@ class MainActivity : ComponentActivity() {
                     else {
                         val ready = delegated.cast.characters.count { it.role == app.roadleaf.playback.CastRole.CUSTOM && it.voice in installed }
                         append("$ready character${if (ready == 1) "" else "s"} using installed voices")
+                        if (delegated.cast.exclusiveVoices) append("; ${delegated.cast.characters.count { it.role != app.roadleaf.playback.CastRole.CUSTOM }} awaiting a distinct voice")
                         if (delegated.shared.isNotEmpty()) append("; ${delegated.shared.size} share a voice, so more voices would help")
                         append(". ")
                         if (delegated.missing.isNotEmpty()) append("${delegated.missing.size} voice${if (delegated.missing.size == 1) "" else "s"} from the file aren't installed here and were replaced. ")

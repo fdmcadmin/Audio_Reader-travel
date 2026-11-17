@@ -18,6 +18,7 @@ import org.junit.Test
 class CastImportTest {
     private val prose = "Mara Vell grew up on the night ferries. She keeps a brass compass that her mother gave her, and she trusts it more than any map."
 
+
     @Test fun charactersComeFromTheirCategoryNotPlaces() {
         assertTrue(LorebookCast.isCharacter(Entry(name = "Tobin", text = "A quiet carpenter.", category = "Characters")))
         assertFalse(LorebookCast.isCharacter(Entry(name = "Harbour of Glass", text = "Gender: none. Age: old. A port city.", category = "Places")))
@@ -59,7 +60,7 @@ class CastImportTest {
         assertEquals(1, twice.characters.size)
         assertEquals("Vell,Captain", twice.characters.single().aliases)
         val many = LorebookCast.characters((1..70).map { Entry(id = "c$it", name = "Person $it", category = "Characters") })
-        assertEquals(64, many.characters.size)
+        assertEquals(70, many.characters.size)
         assertEquals(70, many.found)
     }
 
@@ -138,9 +139,11 @@ class CastImportTest {
     }
 
     @Test fun withoutInstalledVoicesNothingChanges() {
-        val cast = BookVoiceCast(characters = listOf(CastCharacter("Iris", role = CastRole.AUTO, pronoun = CharacterPronoun.SHE)))
+        val cast = BookVoiceCast(characters = listOf(
+            CastCharacter("Iris", role = CastRole.AUTO, pronoun = CharacterPronoun.SHE),
+            CastCharacter("Tobin", role = CastRole.CUSTOM, voice = "en-supertonic-M2", pronoun = CharacterPronoun.HE)))
         val result = VoiceDelegation.assign(cast, emptyList(), narrator = "")
-        assertEquals(cast.characters, result.cast.characters)
+        assertEquals(cast, result.cast)
         assertEquals(0, result.assigned)
         assertTrue(result.needsMoreVoices)
     }

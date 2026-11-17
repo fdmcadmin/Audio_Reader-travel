@@ -48,7 +48,7 @@ object CastFiles {
     fun export(cast: BookVoiceCast, learned: LearnedCast, book: String, engine: String, locale: String, appVersion: String): String =
         JSONObject().put("format", FORMAT).put("version", 1).put("exportedBy", "Roadleaf $appVersion").put("book", book.take(240))
             .put("enginePackage", engine).put("locale", locale)
-            .put("enabled", cast.enabled).put("adaptive", cast.adaptive).put("followViewpoint", cast.followViewpoint).put("sceneOnly", cast.sceneOnly)
+            .put("enabled", cast.enabled).put("adaptive", cast.adaptive).put("followViewpoint", cast.followViewpoint).put("sceneOnly", cast.sceneOnly).put("exclusiveVoices", cast.exclusiveVoices)
             .put("mainCharacter", cast.mainCharacter).put("mainVoice", cast.mainVoice).put("mainPronoun", cast.mainPronoun.name)
             .put("narratorVoice", cast.narratorVoice).put("maleVoice", cast.maleVoice).put("femaleVoice", cast.femaleVoice)
             .put("profileSetId", cast.profileSetId).put("chapterViewpoints", JSONObject(cast.chapterViewpoints))
@@ -57,7 +57,7 @@ object CastFiles {
                     .put("pronoun", it.pronoun.name).put("delivery", it.delivery.name).put("startsLower", it.startsLower).put("profileId", it.profileId))
             } })
             .put("learned", JSONArray().apply {
-                learned.people.filter { person -> person.voice.isNotBlank() && cast.characters.none { it.name.equals(person.name, true) } }.take(64)
+                learned.people.filter { person -> person.voice.isNotBlank() && cast.characters.none { it.name.equals(person.name, true) } }.take(120)
                     .forEach { put(JSONObject().put("name", it.name).put("voice", it.voice).put("gender", it.gender.name)) }
             })
             .toString(2)
@@ -86,7 +86,9 @@ object CastFiles {
             CastCharacter(name, role = CastRole.CUSTOM, voice = item.optString("voice").take(160), pronoun = pronoun)
         }
         val supplied = (characters + learned).distinctBy { it.name.lowercase(Locale.ROOT) }
-        val others = existing.characters.filter { old -> supplied.none { it.name.equals(old.name, true) } }
+        val others = existing.characters.filter { old -> supplied.none { incoming ->
+            incoming.name.equals(old.name, true) || incoming.aliases.split(',').any { it.trim().equals(old.name, true) }
+        } }
             .map { old -> if (old.profileId.isNotBlank() && supplied.any { it.profileId == old.profileId }) old.copy(profileId = "") else old }
         val viewpoints = root.optJSONObject("chapterViewpoints")?.let { value ->
             value.keys().asSequence().take(64).associateWith { value.optString(it) }.filterValues { it.isNotBlank() && it.length <= 80 }
@@ -96,7 +98,8 @@ object CastFiles {
             root.optBoolean("adaptive", true), root.optBoolean("followViewpoint", true),
             (existing.chapterViewpoints + viewpoints).entries.take(64).associate { it.key to it.value },
             enumOr(root.optString("mainPronoun"), CharacterPronoun.AUTO), narratorVoice = root.optString("narratorVoice").take(160),
-            sceneOnly = root.optBoolean("sceneOnly"), profileSetId = root.optString("profileSetId").take(120).ifBlank { existing.profileSetId })
+            sceneOnly = root.optBoolean("sceneOnly"), profileSetId = root.optString("profileSetId").take(120).ifBlank { existing.profileSetId },
+            exclusiveVoices = root.optBoolean("exclusiveVoices", existing.exclusiveVoices))
         return Imported(Kind.CAST, cast.validated(), supplied.size, supplied.size, root.optString("enginePackage"))
     }
 
@@ -123,7 +126,11 @@ object CastFiles {
         }
         val added = imported.filter { fresh -> existing.characters.none { same(it, fresh) } }
         val room = (LorebookCast.MAX_CHARACTERS - kept.size).coerceAtLeast(0)
-        return existing.copy(enabled = true, sceneOnly = true, characters = kept + added.take(room)).validated()
+        val claimed = mutableSetOf<String>().apply { existing.narratorVoice.takeIf(String::isNotBlank)?.let(::add) }
+        val unique = (kept + added.take(room)).map { person ->
+            if (person.role == CastRole.CUSTOM && person.voice.isNotBlank() && !claimed.add(person.voice)) person.copy(role = CastRole.AUTO, voice = "") else person
+        }
+        return existing.copy(enabled = true, sceneOnly = true, exclusiveVoices = true, characters = unique).validated()
     }
 
     private fun novelAi(root: JSONObject): JSONObject? = when {

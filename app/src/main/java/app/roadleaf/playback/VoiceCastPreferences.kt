@@ -23,13 +23,14 @@ class VoiceCastPreferences(context: Context) {
             } }, adaptive = json.optBoolean("adaptive", json.optBoolean("enabled")), followViewpoint = json.optBoolean("followViewpoint", true),
             chapterViewpoints = json.optJSONObject("chapterViewpoints")?.let { chapters -> chapters.keys().asSequence().take(64).associateWith { chapters.getString(it) } }.orEmpty(),
             mainPronoun = CharacterPronoun.entries.firstOrNull { it.name == json.optString("mainPronoun") } ?: CharacterPronoun.AUTO,
-            narratorVoice = json.optString("narratorVoice"), sceneOnly = json.optBoolean("sceneOnly"), profileSetId = json.optString("profileSetId")).validated()
+            narratorVoice = json.optString("narratorVoice"), sceneOnly = json.optBoolean("sceneOnly"), profileSetId = json.optString("profileSetId"),
+            exclusiveVoices = json.optBoolean("exclusiveVoices")).validated()
     }.getOrDefault(BookVoiceCast())
     fun save(book: String, value: BookVoiceCast) {
         require(book.isNotBlank()) { "Choose a book first." }
         val cast = value.validated()
         val json = JSONObject().put("enabled", cast.enabled).put("adaptive", cast.adaptive).put("main", cast.mainCharacter).put("mainVoice", cast.mainVoice)
-            .put("followViewpoint", cast.followViewpoint).put("chapterViewpoints", JSONObject(cast.chapterViewpoints)).put("mainPronoun", cast.mainPronoun.name).put("narratorVoice", cast.narratorVoice).put("sceneOnly", cast.sceneOnly).put("profileSetId", cast.profileSetId)
+            .put("followViewpoint", cast.followViewpoint).put("chapterViewpoints", JSONObject(cast.chapterViewpoints)).put("mainPronoun", cast.mainPronoun.name).put("narratorVoice", cast.narratorVoice).put("sceneOnly", cast.sceneOnly).put("profileSetId", cast.profileSetId).put("exclusiveVoices", cast.exclusiveVoices)
             .put("maleVoice", cast.maleVoice).put("femaleVoice", cast.femaleVoice).put("characters", JSONArray().apply { cast.characters.forEach {
                 put(JSONObject().put("name", it.name).put("aliases", it.aliases).put("role", it.role.name).put("voice", it.voice)
                     .put("delivery", it.delivery.name).put("startsLower", it.startsLower).put("pronoun", it.pronoun.name).put("profileId", it.profileId))
@@ -41,11 +42,11 @@ class VoiceCastPreferences(context: Context) {
             val json = JSONObject(value.orEmpty()); DialogueState(json.optString("quote").firstOrNull(), json.optString("actor", "narrator"), json.optString("lead").takeLast(180),
                 json.optDouble("pitchScale", 1.0).toFloat().takeIf { it.isFinite() && it in 0.7f..1.3f } ?: 1f,
                 json.optString("narrativeLead").takeLast(720), json.optString("turnTail").takeLast(240),
-                json.optJSONArray("sceneNames")?.let { list -> (0 until minOf(65, list.length())).map { list.getString(it).take(80) }.toSet() }.orEmpty(), json.optBoolean("sceneExplicit"),
+                json.optJSONArray("sceneNames")?.let { list -> (0 until minOf(120, list.length())).map { list.getString(it).take(80) }.toSet() }.orEmpty(), json.optBoolean("sceneExplicit"),
                 json.optString("sceneViewpoint").take(80))
         }.getOrDefault(DialogueState())
         fun encode(state: DialogueState) = JSONObject().put("quote", state.closingQuote?.toString().orEmpty()).put("actor", state.actor).put("lead", state.lead.takeLast(180)).put("pitchScale", state.pitchScale.toDouble())
-            .put("narrativeLead", state.narrativeLead.takeLast(720)).put("turnTail", state.turnTail.takeLast(240)).put("sceneNames", JSONArray(state.sceneNames.take(65))).put("sceneExplicit", state.sceneExplicit)
+            .put("narrativeLead", state.narrativeLead.takeLast(720)).put("turnTail", state.turnTail.takeLast(240)).put("sceneNames", JSONArray(state.sceneNames.take(120))).put("sceneExplicit", state.sceneExplicit)
             .put("sceneViewpoint", state.sceneViewpoint.take(80)).toString()
     }
 }

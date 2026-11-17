@@ -49,7 +49,7 @@ object CharacterLorebook {
             CastCharacter(name, keys.filter { !it.equals(name, true) }.joinToString(",").take(240), if (item.voice.isBlank()) CastRole.AUTO else CastRole.CUSTOM,
                 item.voice, item.delivery, pronoun = item.pronoun, profileId = item.id)
         }
-        require(result.isNotEmpty() && result.size <= 64) { "Import 1–64 character entries (char_ IDs or Characters category)." }
+        require(result.isNotEmpty() && result.size <= 120) { "Import 1–120 character entries (char_ IDs or Characters category)." }
         require(result.map { it.name.lowercase(java.util.Locale.ROOT) }.distinct().size == result.size) { "Character names must be unique." }
         return result
     }
