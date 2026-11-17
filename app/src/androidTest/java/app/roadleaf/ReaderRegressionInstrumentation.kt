@@ -17,6 +17,9 @@ import app.roadleaf.importing.BookFiles
 import app.roadleaf.playback.NarrationService
 import app.roadleaf.playback.WaveAudio
 import app.roadleaf.playback.BookVoiceCast
+import app.roadleaf.playback.OfflineSpeech
+import app.roadleaf.playback.NativeKokoro
+import app.roadleaf.playback.NativeVctk
 import android.view.accessibility.AccessibilityNodeInfo
 import app.roadleaf.sources.LiveWebPages
 import androidx.media3.common.Player
@@ -53,7 +56,8 @@ class ReaderRegressionInstrumentation : Instrumentation() {
     private var bubblePauseMs = 0L
     private var handoffChecks = false
     private var tabChecks = false
-    override fun onCreate(arguments: Bundle?) { super.onCreate(arguments); bubbleChecks = arguments?.getString("bubbleChecks") == "true"; handoffChecks = arguments?.getString("handoffChecks") == "true"; tabChecks = arguments?.getString("tabChecks") == "true"; bubblePauseMs = arguments?.getString("bubblePauseMs")?.toLongOrNull() ?: 0L; quickReadChecks = arguments?.getString("quickReadChecks") == "true"; webAppProbe = arguments?.getString("browserWebApp") == "true"; browserChecks = arguments?.getString("browserChecks") == "true"; browserProbe = arguments?.getString("browserProbe") == "true"; paragraphChecks = arguments?.getString("paragraphChecks") == "true"; musicChecks = arguments?.getString("musicChecks") == "true"; liveProbeUrl = arguments?.getString("liveUrl"); focusChecks = arguments?.getString("focusChecks") == "true"; preparationChecks = arguments?.getString("preparationChecks") == "true"; websiteChecks = arguments?.getString("websiteChecks") == "true"; chapterChecks = arguments?.getString("chapterChecks") == "true"; adaptiveChecks = arguments?.getString("adaptiveChecks") == "true"; fullChapter = arguments?.getString("fullChapter") == "true"; recoveryChecks = arguments?.getString("recoveryChecks") == "true"; outputChecks = arguments?.getString("outputChecks") == "true"; universalChecks = arguments?.getString("universalChecks") == "true"; castChecks = arguments?.getString("castChecks") == "true"; start() }
+    private var voiceChecks = false
+    override fun onCreate(arguments: Bundle?) { super.onCreate(arguments); voiceChecks = arguments?.getString("voiceChecks") == "true"; bubbleChecks = arguments?.getString("bubbleChecks") == "true"; handoffChecks = arguments?.getString("handoffChecks") == "true"; tabChecks = arguments?.getString("tabChecks") == "true"; bubblePauseMs = arguments?.getString("bubblePauseMs")?.toLongOrNull() ?: 0L; quickReadChecks = arguments?.getString("quickReadChecks") == "true"; webAppProbe = arguments?.getString("browserWebApp") == "true"; browserChecks = arguments?.getString("browserChecks") == "true"; browserProbe = arguments?.getString("browserProbe") == "true"; paragraphChecks = arguments?.getString("paragraphChecks") == "true"; musicChecks = arguments?.getString("musicChecks") == "true"; liveProbeUrl = arguments?.getString("liveUrl"); focusChecks = arguments?.getString("focusChecks") == "true"; preparationChecks = arguments?.getString("preparationChecks") == "true"; websiteChecks = arguments?.getString("websiteChecks") == "true"; chapterChecks = arguments?.getString("chapterChecks") == "true"; adaptiveChecks = arguments?.getString("adaptiveChecks") == "true"; fullChapter = arguments?.getString("fullChapter") == "true"; recoveryChecks = arguments?.getString("recoveryChecks") == "true"; outputChecks = arguments?.getString("outputChecks") == "true"; universalChecks = arguments?.getString("universalChecks") == "true"; castChecks = arguments?.getString("castChecks") == "true"; start() }
     private fun <T> main(action: () -> T): T {
         val result = AtomicReference<Result<T>>()
         runOnMainSync { result.set(runCatching(action)) }
@@ -100,6 +104,22 @@ class ReaderRegressionInstrumentation : Instrumentation() {
         val app = targetContext.applicationContext as RoadleafApp
         val report = mutableListOf<String>()
         try { runBlocking {
+            if (voiceChecks) {
+                val speech = OfflineSpeech(app)
+                try {
+                    val settings = app.listening.settings.value
+                    val sample = "The cast can hear this voice clearly."
+                    for (voice in listOf("kokoro:2", "kokoro:54", "vctk:0", "vctk:108")) {
+                        val output = speech.render(sample, settings.copy(
+                            enginePackage = if (voice.startsWith("kokoro:")) NativeKokoro.ENGINE_ID else "com.brahmadeo.supertonic.tts",
+                            voiceName = voice))
+                        check(output.length() > 1_000L) { "$voice returned no audio" }
+                        report.add("PASS $voice generated ${output.length()} bytes")
+                    }
+                    check(NativeKokoro.installed(app) && NativeVctk.installed(app))
+                } finally { speech.close() }
+                return@runBlocking
+            }
             if (browserProbe) { BrowserEditorProbe(this@ReaderRegressionInstrumentation, report).run(webAppProbe); return@runBlocking }
             if (websiteChecks) { WebsiteLibraryChecks(this@ReaderRegressionInstrumentation, report).run(); return@runBlocking }
             if (castChecks) { CastFileChecks(app, report).run(); return@runBlocking }

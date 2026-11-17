@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
         var showSourceHelp by remember { mutableStateOf(false) }
         var voiceCatalog by remember { mutableStateOf<SpeechCatalog?>(null) }
         var voicesBusy by remember { mutableStateOf(false) }
+        var kokoroImportBusy by remember { mutableStateOf(false) }
         var voiceRequest by remember { mutableIntStateOf(0) }
         var browserAction by remember { mutableStateOf<SourceAction.Browser?>(null) }
         var bookToDelete by remember { mutableStateOf<Book?>(null) }
@@ -471,7 +472,22 @@ class MainActivity : ComponentActivity() {
                         if (voiceSection == 0) item { VoiceSettingsPanel(settings, voiceCatalog, voicesBusy, controller != null, ::refreshVoices,
                             onApply = { vm.saveSettings(it); send(NarrationService.APPLY_SETTINGS); vm.message.value = "Narrator settings saved" },
                             onPreview = { value, text -> vm.saveSettings(value); send(NarrationService.PREVIEW, Bundle().apply { putString("text", text) }) },
-                            onAndroidSettings = ::voiceSettings, onMoreVoices = { showVoiceSources = true }) }
+                            onAndroidSettings = ::voiceSettings, onMoreVoices = { showVoiceSources = true },
+                            onImportKokoro = {
+                                if (!kokoroImportBusy) {
+                                    kokoroImportBusy = true
+                                    vm.message.value = "Preparing the included Kokoro voices. Keep Roadleaf open until this finishes."
+                                    vm.task {
+                                        try {
+                                            vm.message.value = KokoroModelImport.installBundled(this@MainActivity)
+                                            voiceCatalog = null
+                                        } catch (error: Exception) {
+                                            vm.message.value = "Kokoro setup failed: " + (error.message ?: "invalid model archive")
+                                        } finally { kokoroImportBusy = false }
+                                    }
+                                }
+                            },
+                            kokoroInstalled = NativeKokoro.installed(this@MainActivity), kokoroImportBusy = kokoroImportBusy) }
                         if (voiceSection == 1) item {
                             val cast = remember(castBook, castRevision) { vm.app.casts.get(castBook) }
                             val learned = remember(castBook, learnedRevision) { vm.app.learnedCasts.get(castBook) }

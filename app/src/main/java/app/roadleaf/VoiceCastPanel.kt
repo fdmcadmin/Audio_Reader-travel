@@ -25,7 +25,11 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     var showAllProfiles by remember(selectedBook) { mutableStateOf(false) }
     var reset by remember { mutableStateOf(false) }
     val matches = catalog != null && (settings.enginePackage.isBlank() || catalog.enginePackage == settings.enginePackage)
-    val voices = if (matches) catalog!!.voices.filter { it.localeTag == settings.localeTag } else emptyList()
+    val voices = if (matches) catalog!!.voices.filter { it.localeTag == settings.localeTag ||
+        (catalog.enginePackage == NativeKokoro.ENGINE_ID &&
+            it.localeTag.startsWith("en-", true) && settings.localeTag.startsWith("en-", true)) } else emptyList()
+    if (catalog?.enginePackage == "com.brahmadeo.supertonic.tts")
+        Text("Supertonic remains available for the narrator and leads. Assign VCTK supporting voices to individual cast members; preview their numbered voices before saving.", style = MaterialTheme.typography.bodySmall)
     val choices = listOf(Choice("", if (draft.adaptive) "Choose as the reader learns" else "Use narrator")) + voices.map { Choice(it.name, voiceLabel(it.name, catalog?.enginePackage.orEmpty())) }
     val effective = remember(draft, learned, catalog, settings) {
         AdaptiveCast.prepare(draft, learned, catalog?.let { AdaptiveVoices.from(it, settings) } ?: AdaptiveVoices(), "preview", 0, "").cast
