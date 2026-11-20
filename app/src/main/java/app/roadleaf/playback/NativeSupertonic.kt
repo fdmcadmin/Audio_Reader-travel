@@ -1,0 +1,119 @@
+package app.roadleaf.playback
+
+import android.content.Context
+import com.k2fsa.sherpa.onnx.GenerationConfig
+import com.k2fsa.sherpa.onnx.OfflineTts
+import com.k2fsa.sherpa.onnx.OfflineTtsConfig
+import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
+import com.k2fsa.sherpa.onnx.OfflineTtsSupertonicModelConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import java.io.DataInputStream
+import java.io.File
+
+internal object SupertonicVoiceIndex {
+    private const val PREFIX = "supertonic3:"
+    private val nativeId = Regex("""supertonic3:(\d{1,3}):([FM][1-5][A-Za-z0-9+-]*)""")
+    private val stockId = Regex("""en-supertonic-([FM])([1-5])""")
+    private val stockNames = "FM".flatMap { group -> (1..5).map { "$group$it" } }
+
+    fun tableSize(count: Int) = 48L + count * (50 * 256 + 8 * 16) * 4L
+    fun label(id: String) = nativeId.matchEntire(id)?.groupValues?.get(2)
+    fun id(index: Int, name: String) = "$PREFIX$index:$name"
+
+    fun speaker(id: String, names: List<String>): Int? {
+        val match = nativeId.matchEntire(id)
+        if (match != null) {
+            val index = match.groupValues[1].toInt()
+            return index.takeIf { names.getOrNull(it) == match.groupValues[2] }
+        }
+        val stock = stockId.matchEntire(id)?.let { it.groupValues[1] + it.groupValues[2] } ?: return null
+        return stockNames.indexOf(stock).takeIf { it >= 0 }
+    }
+
+    fun read(folder: File): List<String> {
+        val names = File(folder, "voices.txt").readLines()
+        require(names.size in setOf(120, 170) && names.take(10) == stockNames &&
+            names.toSet().size == names.size && names.all { label(id(0, it)) != null }) {
+            "Invalid Supertonic voice index."
+        }
+        val table = File(folder, "voice.bin")
+        require(table.length() == tableSize(names.size)) { "Invalid Supertonic voice table size." }
+        DataInputStream(table.inputStream().buffered()).use { input ->
+            val expected = listOf(names.size, 50, 256, names.size, 8, 16)
+            require(expected.all { java.lang.Long.reverseBytes(input.readLong()) == it.toLong() }) {
+                "Invalid Supertonic voice table dimensions."
+            }
+        }
+        return names
+    }
+}
+
+/** Supertonic voices share one resident native model. All synthesis is local. */
+internal class NativeSupertonic(private val context: Context) {
+    companion object {
+        const val ENGINE_ID = "roadleaf.native.supertonic3"
+        const val LABEL = "Supertonic 3 • built into Roadleaf"
+
+        fun options(context: Context): List<OfflineVoiceOption> = if (SupertonicModelInstall.installed(context)) {
+            SupertonicVoiceIndex.read(SupertonicModelInstall.folder(context)).mapIndexed { index, label ->
+                OfflineVoiceOption(SupertonicVoiceIndex.id(index, label), "en-US", 400, 100)
+            }
+        } else emptyList()
+    }
+
+    private var tts: OfflineTts? = null
+    private val voices by lazy { SupertonicVoiceIndex.read(SupertonicModelInstall.folder(context)) }
+
+    private fun model(): OfflineTts {
+        tts?.let { return it }
+        val folder = SupertonicModelInstall.folder(context)
+        fun path(name: String) = File(folder, name).absolutePath
+        val instance = OfflineTts(config = OfflineTtsConfig(
+            model = OfflineTtsModelConfig(supertonic = OfflineTtsSupertonicModelConfig(
+                durationPredictor = path("duration_predictor.int8.onnx"),
+                textEncoder = path("text_encoder.int8.onnx"),
+                vectorEstimator = path("vector_estimator.int8.onnx"),
+                vocoder = path("vocoder.int8.onnx"),
+                ttsJson = path("tts.json"),
+                unicodeIndexer = path("unicode_indexer.bin"),
+                voiceStyle = path("voice.bin")
+            ), numThreads = 2, provider = "cpu"),
+            maxNumSentences = 1
+        ))
+        check(instance.numSpeakers() == voices.size) {
+            instance.free()
+            "Supertonic did not load the complete voice table."
+        }
+        tts = instance
+        return instance
+    }
+
+    suspend fun render(text: String, requested: String, fallback: String?, pitch: Float, outputFolder: File): File =
+        withContext(Dispatchers.Default) {
+            check(SupertonicModelInstall.installed(context)) { "Set up Supertonic 3 under Voice → Narrator before listening." }
+            val sid = SupertonicVoiceIndex.speaker(requested, voices) ?: fallback?.let { SupertonicVoiceIndex.speaker(it, voices) } ?: 0
+            val key = AudioCacheKey.create(ENGINE_ID, SupertonicVoiceIndex.id(sid, voices[sid]), 1f, text)
+            val audio = File(outputFolder, "$key.wav")
+            if (!audio.exists() || audio.length() <= 44) {
+                outputFolder.mkdirs()
+                val owner = currentCoroutineContext()
+                val generated = model().generateWithConfigAndCallback(text, GenerationConfig(sid = sid, speed = 1f,
+                    extra = mapOf("lang" to "en"))) { if (owner.isActive) 1 else 0 }
+                owner.ensureActive()
+                check(generated.samples.isNotEmpty()) { "Supertonic returned no speech for this passage." }
+                val partial = File(outputFolder, "$key.part")
+                try {
+                    check(generated.save(partial.absolutePath) && WaveAudio.durationMs(partial) > 0 && partial.renameTo(audio)) {
+                        "Could not save Supertonic audio."
+                    }
+                } finally { partial.delete() }
+            }
+            WavePitch.adjust(audio, pitch)
+        }
+
+    fun close() { tts?.free(); tts = null }
+}

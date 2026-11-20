@@ -2,6 +2,10 @@
 
 All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
+## 0.3.41
+
+- Roadleaf can run Supertonic 3 locally after a one-time in-app model download. The English voice picker includes ten stock voices, expressive variants, and blends from two to four stock voices.
+
 ## 0.3.40
 
 - Story and website playback add short pauses after sentences and longer pauses at paragraph and chapter boundaries at the selected listening speed.

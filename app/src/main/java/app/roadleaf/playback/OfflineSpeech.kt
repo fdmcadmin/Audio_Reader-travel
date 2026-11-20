@@ -20,6 +20,7 @@ class OfflineSpeech(private val context: Context,
     private val awaitSynthesis: suspend (CompletableDeferred<Unit>, Long) -> Unit = { result, timeout -> withTimeout(timeout) { result.await() } }) {
     private val nativeKokoro = NativeKokoro(context)
     private val nativeVctk = NativeVctk(context)
+    private val nativeSupertonic = NativeSupertonic(context)
     private var engine: TextToSpeech? = null
     private var enginePackage = ""
     private var appliedVoice = ""
@@ -33,9 +34,13 @@ class OfflineSpeech(private val context: Context,
     // Engine and voice that have already spoken since the engine started, so warming up again is pointless.
     private var warmed = ""
 
+    private fun installedServices() =
+        context.packageManager.queryIntentServices(Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE), 0)
+            .filter { it.serviceInfo?.let { service -> service.enabled && service.exported } == true }
+            .distinctBy { it.serviceInfo.packageName }
+
     private suspend fun connect(requested: String): TextToSpeech {
-        val installed = context.packageManager.queryIntentServices(Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE), 0)
-            .mapNotNull { it.serviceInfo?.takeIf { service -> service.enabled && service.exported }?.packageName }.distinct().sorted()
+        val installed = installedServices().map { it.serviceInfo.packageName }.sorted()
         val target = SpeechEngineSelection.select(requested,
             Settings.Secure.getString(context.contentResolver, Settings.Secure.TTS_DEFAULT_SYNTH), installed)
         engine?.takeIf { enginePackage == target }?.let { return it }
@@ -74,29 +79,35 @@ class OfflineSpeech(private val context: Context,
         }.also { cachedVoices = it }
     }
     suspend fun catalog(requestedEngine: String): SpeechCatalog = mutex.withLock {
-        val builtin = SpeechEngineOption(NativeKokoro.ENGINE_ID, "Kokoro 82M • built into Roadleaf")
-        if (requestedEngine == NativeKokoro.ENGINE_ID) {
-            // The library is available even before the model archive is imported.
-            val options = runCatching {
-                val tts = connect("")
-                tts.engines.map { SpeechEngineOption(it.name, it.label) }
-            }.getOrDefault(emptyList())
-            return@withLock SpeechCatalog((options + builtin).distinctBy { it.packageName },
-                NativeKokoro.options(context), NativeKokoro.ENGINE_ID)
+        val builtins = buildList {
+            add(SpeechEngineOption(NativeKokoro.ENGINE_ID, "Kokoro 82M • built into Roadleaf"))
+            if (SupertonicModelInstall.packaged(context) || SupertonicModelInstall.installed(context)) {
+                add(SpeechEngineOption(NativeSupertonic.ENGINE_ID, NativeSupertonic.LABEL))
+            }
+        }
+        if (requestedEngine in setOf(NativeKokoro.ENGINE_ID, NativeSupertonic.ENGINE_ID)) {
+            val options = installedServices().map { SpeechEngineOption(it.serviceInfo.packageName, it.loadLabel(context.packageManager).toString()) }
+            val voices = if (requestedEngine == NativeSupertonic.ENGINE_ID) NativeSupertonic.options(context) + NativeVctk.options(context)
+                else NativeKokoro.options(context)
+            return@withLock SpeechCatalog((options + builtins).distinctBy { it.packageName }, voices, requestedEngine)
         }
         val tts = connect(requestedEngine)
         val installedVoices = offlineVoices(tts, refresh = true)
         if (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
             android.util.Log.d("RoadleafVoices", "engine=$enginePackage offline=${installedVoices.size} englishKokoro=${installedVoices.count { HayaiVoices.isEnglishKokoro(it.name) }}")
-        SpeechCatalog((tts.engines.map { SpeechEngineOption(it.name, it.label) } + builtin)
+        SpeechCatalog((tts.engines.map { SpeechEngineOption(it.name, it.label) } + builtins)
                 .distinctBy { it.packageName }.sortedBy { it.label },
             installedVoices.sortedWith(compareBy<Voice> { it.locale.toLanguageTag() }.thenBy { it.name })
                 .map { OfflineVoiceOption(it.name, HayaiVoices.locale(it.name, it.locale.toLanguageTag(), enginePackage), it.quality, it.latency) } +
                 (if (enginePackage == "com.brahmadeo.supertonic.tts") NativeVctk.options(context) else emptyList()), enginePackage)
     }
     suspend fun render(text: String, settings: ListeningSettings, fallbackVoice: String? = null): File = mutex.withLock {
+        if (settings.enginePackage != NativeSupertonic.ENGINE_ID) nativeSupertonic.close()
+        if (settings.enginePackage == NativeSupertonic.ENGINE_ID) nativeKokoro.close()
         if (NativeVctk.speakerId(settings.voiceName) != null)
             return@withLock nativeVctk.render(text, settings.voiceName, settings.pitch, folder)
+        if (settings.enginePackage == NativeSupertonic.ENGINE_ID)
+            return@withLock nativeSupertonic.render(text, settings.voiceName, fallbackVoice, settings.pitch, folder)
         if (settings.enginePackage == NativeKokoro.ENGINE_ID) {
             val chosen = settings.voiceName.takeIf { NativeKokoro.speakerId(it) != null }
                 ?: fallbackVoice.orEmpty()
@@ -112,6 +123,8 @@ class OfflineSpeech(private val context: Context,
      * and its voice model are loaded before a story's first passage. True when the voice is ready.
      */
     suspend fun warmUp(settings: ListeningSettings): Boolean = mutex.withLock {
+        if (settings.enginePackage == NativeSupertonic.ENGINE_ID)
+            return@withLock SupertonicModelInstall.installed(context)
         if (settings.enginePackage == NativeKokoro.ENGINE_ID) {
             // Native model initializes during the next synth; keep warmup nonblocking.
             return@withLock NativeKokoro.installed(context)
@@ -213,5 +226,5 @@ class OfflineSpeech(private val context: Context,
         }
         lastTrimAt = now; lastBudget = mode.cacheBytes
     }
-    fun close() { nativeKokoro.close(); nativeVctk.close(); engine?.stop(); pending.values.forEach { it.cancel() }; pending.clear(); engine?.shutdown(); engine = null; warmed = "" }
+    fun close() { nativeKokoro.close(); nativeVctk.close(); nativeSupertonic.close(); engine?.stop(); pending.values.forEach { it.cancel() }; pending.clear(); engine?.shutdown(); engine = null; warmed = "" }
 }

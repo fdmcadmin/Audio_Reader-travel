@@ -19,8 +19,9 @@ class CastSpeechRenderer(private val speech: OfflineSpeech, private val cache: F
             val replaced = pronounce(utterance.text)
             val spoken = if (settings.localeTag.startsWith("en", true)) NarrationText.english(replaced) else replaced
             // Match Supertonic's bounded English batches before entering its own splitter.
-            val limit = if (settings.enginePackage == "com.brahmadeo.supertonic.tts") 300 else 550
-            val prepared = if (settings.enginePackage == "com.brahmadeo.supertonic.tts") SpeechUtterances.singleParagraph(spoken) else spoken
+            val supertonic = settings.enginePackage in setOf("com.brahmadeo.supertonic.tts", NativeSupertonic.ENGINE_ID)
+            val limit = if (supertonic) 300 else 550
+            val prepared = if (supertonic) SpeechUtterances.singleParagraph(spoken) else spoken
             val voice = settings.copy(voiceName = utterance.voice.ifBlank { settings.voiceName },
                 pitch = (settings.pitch * utterance.pitchScale).coerceIn(0.7f, 1.3f))
             for (sentence in SpeechUtterances.sentences(prepared, settings.localeTag)) {

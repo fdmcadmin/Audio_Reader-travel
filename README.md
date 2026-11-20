@@ -61,6 +61,7 @@ For testing on a phone, install **`app/build/outputs/apk/compact/app-compact.apk
 
 1. Import an EPUB or UTF-8 TXT you're allowed to use through Android's file picker, open a webpage with **Sources → Read webpage**, or add one with **Library → Add website book**.
 2. Open **Voice** → **Refresh voices**. Choose an installed speech engine, language/accent and offline voice, and adjust pitch and speed. Preview the narrator, then **Save & apply**.
+   - For the native Supertonic 3 pack, choose **Supertonic 3** → **Set up Supertonic 3**. After the one-time 129 MB download, its 170 English voices are available offline for narration and characters.
 3. Tap **Listen** for an imported book, or **Continue reading** on a website quick pick.
    - Use lock-screen, notification, Bluetooth/headset controls or **Drive view** for larger controls.
    - Ordinary notifications keep narration moving with normal volume ducking. Calls and exclusive temporary focus pause it and resume when focus returns, unless you paused manually.
@@ -78,6 +79,8 @@ For testing on a phone, install **`app/build/outputs/apk/compact/app-compact.apk
    - All learning and narration happen on the phone.
 
 Previews pause the current book and save its position. Voice, engine, accent, pitch, speed and device-usage settings survive restarts. Android Auto setup and its sideloading limits are described in [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md).
+
+For a source build, run `bash scripts/fetch-supertonic-voices.sh` to generate the bundled Supertonic voice table from the pinned upstream archive. The builder defaults to 120 styles, and Roadleaf's build script adds 50 four-voice blends with `--quads`. The [Supertonic 3 model terms](https://huggingface.co/supertone-oss-archive/supertonic-3/blob/aafc6e3/LICENSE) apply to the stock and blended styles.
 
 ## Source support
 

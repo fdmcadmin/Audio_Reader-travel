@@ -15,8 +15,8 @@ android {
         if (arm64Only.get()) {
             ndk { abiFilters += "arm64-v8a" }
         }
-        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 43
-        versionName = "0.3.40"
+        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 44
+        versionName = "0.3.41"
         manifestPlaceholders["roadleafAppLabel"] = "Roadleaf"
         manifestPlaceholders["roadleafBrowserLabel"] = "Roadleaf browser reader"
         testInstrumentationRunner = "app.roadleaf.ReaderRegressionInstrumentation"

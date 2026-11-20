@@ -16,4 +16,5 @@ signing/
 *.aab
 app/libs/*.aar
 app/src/main/assets/models/*.tar.bz2
+app/src/main/assets/supertonic3/
 !app/src/test/resources/*.epub

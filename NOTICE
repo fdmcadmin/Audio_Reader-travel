@@ -29,11 +29,12 @@ These terms apply to all material in this repository authored for Roadleaf.
 
 What this license does not cover
 --------------------------------
-- Voices and speech engines. Roadleaf includes no voices. It uses text-to-speech
-  engines the owner installs on the device (for example Google's speech
-  services, Supertonic, sherpa-onnx/Piper or RHVoice). Each engine and its voices
-  are separate products under their own terms. Roadleaf claims no ownership of
-  them.
+- Voices and speech engines. Offline models and Android text-to-speech engines
+  are covered by their own licenses. Supertonic 3 and its stock voices are by
+  Supertone Inc. Roadleaf's generated voice.bin adds blends and expressive styles.
+  The model and derivative voice table are subject to the included Open RAIL-M
+  Model License, including paragraph 5 and Attachment A.
+  https://huggingface.co/supertone-oss-archive/supertonic-3/blob/aafc6e3/LICENSE
 - Stories and webpages. Roadleaf is a reader for text that already exists: it
   does not generate, sell or distribute stories. Text it reads belongs to its
   authors and sites, under their terms. Roadleaf reads only what the owner's own

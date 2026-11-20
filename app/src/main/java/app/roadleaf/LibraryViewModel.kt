@@ -8,6 +8,7 @@ import androidx.core.content.edit
 import app.roadleaf.data.*
 import app.roadleaf.sources.*
 import app.roadleaf.playback.ListeningSettings
+import app.roadleaf.playback.SupertonicModelInstall
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -23,6 +24,10 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val results = MutableStateFlow<List<SourceBook>>(emptyList())
     val chapters = MutableStateFlow<List<Chapter>>(emptyList())
     val settings = app.listening.settings
+    private val supertonicReady = MutableStateFlow(SupertonicModelInstall.installed(app))
+    val supertonicInstalled = supertonicReady.asStateFlow()
+    private val supertonicDownloading = MutableStateFlow(false)
+    val supertonicBusy = supertonicDownloading.asStateFlow()
     init { viewModelScope.launch {
         // Bring the existing reader page into the new quick picks once, without fetching it.
         val prefs = app.getSharedPreferences("web-reader", 0)
@@ -36,6 +41,21 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     fun rememberWebsite(url: String) { viewModelScope.launch { runCatching { app.websites.remember(url) }.onFailure { message.value = "Could not save this website shortcut." } } }
     fun forgetWebsite(bookUrl: String) = task { app.websites.forget(bookUrl); message.value = "Quick pick removed" }
     fun saveSettings(settings: ListeningSettings) { app.listening.save(settings) }
+    fun installSupertonic() = viewModelScope.launch {
+        if (supertonicReady.value || !supertonicDownloading.compareAndSet(false, true)) return@launch
+        message.value = "Downloading the Supertonic 3 model…"
+        try {
+            val count = SupertonicModelInstall.install(app)
+            supertonicReady.value = true
+            message.value = "$count Supertonic 3 voices are ready for offline playback."
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            message.value = "Supertonic setup failed. " + (error.message ?: "Try the download again.")
+        } finally {
+            supertonicDownloading.value = false
+        }
+    }
     fun task(action: suspend () -> Unit) { viewModelScope.launch {
         if (busy.value) return@launch
         busy.value = true

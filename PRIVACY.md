@@ -5,11 +5,11 @@ Roadleaf is a reader. It turns text you already have access to into speech on yo
 ## What stays on your device
 
 - Your library, imported books, reading progress, voice and character choices, word fixes and settings are stored only in the app's private storage. Android backup and device transfer are switched off for this data.
-- Speech is generated offline by the text-to-speech engine you install. Roadleaf does not upload text for narration.
+- Speech is generated offline by Roadleaf's built-in engines or an installed text-to-speech engine. Roadleaf does not upload text for narration.
 
 ## Network use
 
-- Roadleaf connects to the internet only when you open a webpage in its reader, follow its automatic next-chapter link, or search Project Gutenberg's catalog. Those requests go directly to the site you chose, as in any browser.
+- Roadleaf connects to the internet when you open a webpage in its reader, follow its automatic next-chapter link, search Project Gutenberg's catalog, or choose to download a voice model. The Supertonic 3 download requests the model files from GitHub and sends no reading text, cast assignments or voice settings.
 - Websites can store their own cookies and sign-in in Roadleaf's reader, just as in a browser. Roadleaf never sees or keeps your passwords; you type them into the site's own page. Cookies from other sites (third-party cookies) are blocked, and known advertising and tracking hosts are not loaded.
 - Searches typed into the reader's address bar go to the search engine you choose.
 
@@ -17,7 +17,7 @@ Roadleaf is a reader. It turns text you already have access to into speech on yo
 
 | Permission | Why | When |
 | --- | --- | --- |
-| Internet | Load webpages and catalogs you open. | Only while you read or browse a page. |
+| Internet | Load webpages and catalogs and download requested voice models. | When reading from the web, browsing or downloading a model. |
 | Foreground service, media playback, wake lock | Keep narration playing with the screen off or behind another app, with notification and Bluetooth controls. | Only while narrating. |
 | Phone state (optional) | In "Headphones with car music" mode, pause the book during calls. Only the call state and audio mode are checked; never numbers, contacts, call history or microphone audio. | Only if you turn that mode on and allow the permission. |
 | Notifications (Android 13+) | Show playback controls. | While narrating. |

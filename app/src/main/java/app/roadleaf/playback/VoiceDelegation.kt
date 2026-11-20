@@ -31,6 +31,7 @@ object VoiceDelegation {
     /** Gender only where the engine labels it in the voice ID; never guessed from how a name sounds. */
     fun gender(voice: String): Gender {
         if (HayaiVoices.isEnglishKokoro(voice)) return HayaiVoices.gender(voice)
+        SupertonicVoiceIndex.label(voice)?.let { return if (it.startsWith('F')) Gender.FEMALE else Gender.MALE }
         val id = voice.lowercase(Locale.ROOT)
         // Kokoro v1.0 speaker IDs encode regional accent and gender in their names.
         val nativeSpeaker = NativeKokoro.speakerName(id)

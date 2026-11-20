@@ -1,12 +1,16 @@
 package app.roadleaf.sources
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
 import java.net.URI
 import java.net.URL
 import java.net.URLEncoder
+import java.io.ByteArrayOutputStream
+import java.io.OutputStream
 import javax.net.ssl.HttpsURLConnection
 
 enum class Capability { CATALOG, EPUB_DOWNLOAD, BROWSER, FILE_IMPORT }
@@ -98,7 +102,13 @@ class SourceRegistry {
 
 /** No cookies, credential collection, HTML crawling, lock bypass or automatic retry. */
 object SafeHttp {
-    suspend fun get(url: String, limit: Int, allowed: (URI) -> Boolean): ByteArray = withContext(Dispatchers.IO) {
+    suspend fun get(url: String, limit: Int, allowed: (URI) -> Boolean): ByteArray =
+        ByteArrayOutputStream().use { output ->
+            copyTo(url, limit, output, allowed)
+            output.toByteArray()
+        }
+
+    suspend fun copyTo(url: String, limit: Int, output: OutputStream, allowed: (URI) -> Boolean): Unit = withContext(Dispatchers.IO) {
         var current = URI(url)
         repeat(5) {
             require(allowed(current)) { "Download destination is not allowed for this source." }
@@ -113,12 +123,19 @@ object SafeHttp {
                 } else {
                     require(code == 200) { "Source returned HTTP $code. Open it in your browser; downloads are not retried automatically." }
                     require(connection.contentLengthLong <= limit) { "File exceeds the download limit." }
-                    return@withContext connection.inputStream.use { input ->
-                        val output = java.io.ByteArrayOutputStream()
-                        val buffer = ByteArray(8192)
-                        while (true) { val count = input.read(buffer); if (count < 0) break; require(output.size() + count <= limit) { "File exceeds the download limit." }; output.write(buffer, 0, count) }
-                        output.toByteArray()
+                    connection.inputStream.use { input ->
+                        val buffer = ByteArray(65536)
+                        var total = 0L
+                        while (true) {
+                            currentCoroutineContext().ensureActive()
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            total += count
+                            require(total <= limit) { "File exceeds the download limit." }
+                            output.write(buffer, 0, count)
+                        }
                     }
+                    return@withContext
                 }
             } finally { connection.disconnect() }
         }

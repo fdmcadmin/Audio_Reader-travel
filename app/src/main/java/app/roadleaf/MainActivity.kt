@@ -82,6 +82,9 @@ class MainActivity : ComponentActivity() {
         var voiceCatalog by remember { mutableStateOf<SpeechCatalog?>(null) }
         var voicesBusy by remember { mutableStateOf(false) }
         var kokoroImportBusy by remember { mutableStateOf(false) }
+        val supertonicBusy by vm.supertonicBusy.collectAsStateWithLifecycle()
+        val supertonicPackaged = remember { SupertonicModelInstall.packaged(this@MainActivity) }
+        val supertonicInstalled by vm.supertonicInstalled.collectAsStateWithLifecycle()
         var voiceRequest by remember { mutableIntStateOf(0) }
         var browserAction by remember { mutableStateOf<SourceAction.Browser?>(null) }
         var bookToDelete by remember { mutableStateOf<Book?>(null) }
@@ -507,7 +510,10 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
-                            kokoroInstalled = NativeKokoro.installed(this@MainActivity), kokoroImportBusy = kokoroImportBusy) }
+                            kokoroInstalled = NativeKokoro.installed(this@MainActivity), kokoroImportBusy = kokoroImportBusy,
+                            supertonicOffered = supertonicPackaged || supertonicInstalled, supertonicInstalled = supertonicInstalled,
+                            supertonicBusy = supertonicBusy, onSupertonicTerms = { openLink(SupertonicModelInstall.TERMS) },
+                            onInstallSupertonic = { vm.installSupertonic() }) }
                         if (voiceSection == 1) item {
                             val cast = remember(castBook, castRevision) { vm.app.casts.get(castBook) }
                             val learned = remember(castBook, learnedRevision) { vm.app.learnedCasts.get(castBook) }

@@ -96,15 +96,37 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
     onImportKokoro: () -> Unit = {},
     onDownloadKokoro: () -> Unit = {},
     kokoroInstalled: Boolean = false,
-    kokoroImportBusy: Boolean = false
+    kokoroImportBusy: Boolean = false,
+    supertonicOffered: Boolean = false,
+    supertonicInstalled: Boolean = false,
+    supertonicBusy: Boolean = false,
+    onInstallSupertonic: () -> Unit = {},
+    onSupertonicTerms: () -> Unit = {}
 ) {
     var draft by remember(settings) { mutableStateOf(settings) }
     var previewText by remember { mutableStateOf("The road unfolds before us. A new chapter begins, with dragons beyond the horizon.") }
+    var showModelTerms by remember { mutableStateOf(false) }
+    val nativeSupertonic = draft.enginePackage == NativeSupertonic.ENGINE_ID
+    val ready = when (draft.enginePackage) {
+        NativeSupertonic.ENGINE_ID -> supertonicInstalled
+        NativeKokoro.ENGINE_ID -> kokoroInstalled
+        else -> true
+    }
+    LaunchedEffect(nativeSupertonic, supertonicInstalled, canControl) {
+        if (nativeSupertonic && supertonicInstalled && canControl) onRefresh(NativeSupertonic.ENGINE_ID)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Your narrator", style = MaterialTheme.typography.titleLarge)
         Text("Choose from offline voices installed on this phone. Voice quality and accents depend on your speech engine.", style = MaterialTheme.typography.bodyMedium)
-        val engines = listOf(Choice("", "Android default")) + catalog?.engines.orEmpty().map { Choice(it.packageName, it.label) }
-        ChoicePicker("Speech engine", draft.enginePackage, engines, !busy) { id -> draft = draft.copy(enginePackage = id, voiceName = ""); onRefresh(id) }
+        val engines = buildList {
+            add(Choice("", "Android default"))
+            addAll(catalog?.engines.orEmpty().map { Choice(it.packageName, it.label) })
+            if (supertonicOffered) add(Choice(NativeSupertonic.ENGINE_ID, NativeSupertonic.LABEL))
+        }.distinctBy { it.id }
+        ChoicePicker("Speech engine", draft.enginePackage, engines, !busy && !supertonicBusy) { id ->
+            draft = draft.copy(enginePackage = id, voiceName = "", localeTag = if (id == NativeSupertonic.ENGINE_ID) "en-US" else draft.localeTag)
+            if (id != NativeSupertonic.ENGINE_ID || !supertonicInstalled) onRefresh(id)
+        }
         if (draft.enginePackage == NativeKokoro.ENGINE_ID) {
             Text(if (kokoroInstalled) "Kokoro fp32 ready • 28 English voices and 103 blended voices • works offline."
                  else "Kokoro fp32 is included with Roadleaf. Prepare it once on this phone before listening.",
@@ -112,6 +134,14 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
             OutlinedButton(onClick = onImportKokoro, enabled = !kokoroImportBusy, modifier = Modifier.fillMaxWidth()) {
                 Text(if (kokoroImportBusy) "Preparing voices…" else if (kokoroInstalled) "Prepare Kokoro again" else "Prepare included Kokoro voices")
             }
+        }
+        if (nativeSupertonic) {
+            Text(if (ready) "Supertonic 3 is ready for offline playback."
+                else "Download the 129 MB model once. Roadleaf reads with it offline after setup.", style = MaterialTheme.typography.bodySmall)
+            if (!ready) OutlinedButton(onClick = { showModelTerms = true }, enabled = !supertonicBusy, modifier = Modifier.fillMaxWidth()) {
+                Text(if (supertonicBusy) "Downloading Supertonic 3…" else "Set up Supertonic 3")
+            }
+            TextButton(onClick = onSupertonicTerms) { Text("Supertonic 3 model terms") }
         }
         val catalogMatches = catalog != null && (draft.enginePackage.isBlank() || catalog.enginePackage == draft.enginePackage)
         val voices = if (catalogMatches) catalog!!.voices else emptyList()
@@ -122,13 +152,13 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
             voiceChoice(it, catalog?.enginePackage.orEmpty(), "$quality • ${Locale.forLanguageTag(it.localeTag).displayName}")
         }
         if (catalogMatches) LibriTtsAvailability(voices, catalog!!.enginePackage, draft.localeTag)
-        ChoicePicker("Voice", draft.voiceName, voiceChoices, !busy && catalogMatches) { draft = draft.copy(voiceName = it) }
+        ChoicePicker("Voice", draft.voiceName, voiceChoices, !busy && catalogMatches && (!nativeSupertonic || ready)) { draft = draft.copy(voiceName = it) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { onRefresh(draft.enginePackage) }, enabled = !busy && canControl) { Text(if (busy) "Loading voices…" else "Refresh voices") }
-            if (draft.enginePackage != NativeKokoro.ENGINE_ID) TextButton(onClick = onAndroidSettings) { Text("Install / manage voices") }
+            TextButton(onClick = { onRefresh(draft.enginePackage) }, enabled = !busy && canControl && !supertonicBusy) { Text(if (busy) "Loading voices…" else "Refresh voices") }
+            if (draft.enginePackage != NativeKokoro.ENGINE_ID && !nativeSupertonic) TextButton(onClick = onAndroidSettings) { Text("Install / manage voices") }
         }
         TextButton(onClick = onMoreVoices) { Text("Where to get more voices") }
-        if (catalogMatches && voices.isEmpty()) Text(if (draft.enginePackage == NativeKokoro.ENGINE_ID) "Prepare the included Kokoro model above, then Refresh voices." else "No installed offline voices found. Install voice data in Android settings, then refresh.")
+        if (catalogMatches && voices.isEmpty() && !nativeSupertonic) Text(if (draft.enginePackage == NativeKokoro.ENGINE_ID) "Prepare the included Kokoro model above, then Refresh voices." else "No installed offline voices found. Install voice data in Android settings, then refresh.")
         Text("Speed ${String.format(Locale.ROOT, "%.2f", draft.speed)}×")
         Slider(value = draft.speed, onValueChange = { draft = draft.copy(speed = it) }, valueRange = 0.65f..2f, steps = 26)
         Text("Pitch ${String.format(Locale.ROOT, "%.2f", draft.pitch)} • lower ↔ higher")
@@ -142,14 +172,27 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
             if (it == ResourceMode.ECONOMY) "Less prepared audio, fewer progress writes, smaller audio cache" else "Prepares more audio ahead to cover slower voice engines") }) { draft = draft.copy(resourceMode = ResourceMode.valueOf(it)) }
         OutlinedTextField(previewText, { previewText = it.take(240) }, label = { Text("Preview text") }, modifier = Modifier.fillMaxWidth(), maxLines = 3)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { onPreview(draft.normalized(), previewText) }, enabled = canControl && !busy, modifier = Modifier.weight(1f)) { Text("Preview") }
-            Button(onClick = { onApply(draft.normalized()) }, enabled = canControl && !busy && (draft.enginePackage != NativeKokoro.ENGINE_ID || kokoroInstalled), modifier = Modifier.weight(1f)) { Text("Save & apply") }
+            OutlinedButton(onClick = { onPreview(draft.normalized(), previewText) }, enabled = canControl && !busy && (!nativeSupertonic || ready), modifier = Modifier.weight(1f)) { Text("Preview") }
+            Button(onClick = { onApply(draft.normalized()) }, enabled = canControl && !busy && ready, modifier = Modifier.weight(1f)) { Text("Save & apply") }
         }
         Text("Preview pauses your book. Resume it from Library. For web reading, choose Read chapter again after changing the voice or pronunciations.", style = MaterialTheme.typography.bodySmall)
     }
+    if (showModelTerms) AlertDialog(
+        onDismissRequest = { showModelTerms = false },
+        title = { Text("Set up Supertonic 3") },
+        text = {
+            Column {
+                Text("The model and blended voices are subject to the Open RAIL-M license, including the use restrictions in paragraph 5 and Attachment A.")
+                TextButton(onClick = onSupertonicTerms) { Text("Read model license") }
+            }
+        },
+        confirmButton = { TextButton(onClick = { showModelTerms = false; onInstallSupertonic() }) { Text("Agree and download") } },
+        dismissButton = { TextButton(onClick = { showModelTerms = false }) { Text("Cancel") } }
+    )
 }
 
 internal fun voiceLabel(name: String, engine: String): String {
+    SupertonicVoiceIndex.label(name)?.let { return "Supertonic 3 · $it" }
     HayaiVoices.libriTts(name, engine)?.let { voice ->
         return voice.number?.let { "${voice.pack.label} · speaker $it" } ?: voice.pack.label
     }
