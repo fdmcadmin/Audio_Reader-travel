@@ -1,6 +1,7 @@
 package app.roadleaf.playback
 
 import java.util.Locale
+import java.text.BreakIterator
 
 enum class CastRole(val label: String) { MALE("Male voice"), FEMALE("Female voice"), CUSTOM("Dedicated voice"), NARRATOR("Narrator"), AUTO("Learn from story") }
 enum class CharacterPronoun(val label: String, val subject: String) { AUTO("Learn from text", ""), HE("He / him", "he"), SHE("She / her", "she"), THEY("They / them", "they") }
@@ -243,6 +244,33 @@ class VoiceCastPlanner(private val cast: BookVoiceCast) {
 }
 
 object SpeechUtterances {
+    private val terminal = Regex("""[.!?…。！？]+["'”’»)\]}]*\s*$""")
+    private val abbreviation = Regex("""(?i)(?<![\p{L}\p{N}])(?:mr|mrs|ms|dr|prof|st|vs|e\.g|i\.e|[a-z](?:\.[a-z])+|(?-i:[A-Z]))\.$""")
+
+    fun endsSentence(text: String): Boolean {
+        val ending = terminal.find(text) ?: return false
+        val punctuationEnd = ending.range.first + ending.value.takeWhile { it in ".!?…。！？" }.length
+        return !abbreviation.containsMatchIn(text.take(punctuationEnd))
+    }
+
+    /** Keep the punctuation with the spoken sentence. The source span and its offsets stay intact. */
+    fun sentences(text: String, localeTag: String): List<String> {
+        val iterator = BreakIterator.getSentenceInstance(Locale.forLanguageTag(localeTag))
+        iterator.setText(text)
+        return buildList {
+            var start = iterator.first()
+            var end = iterator.next()
+            while (end != BreakIterator.DONE) {
+                val sentence = text.substring(start, end)
+                if (endsSentence(sentence) || end == text.length) {
+                    add(sentence)
+                    start = end
+                }
+                end = iterator.next()
+            }
+        }
+    }
+
     /** Planning keeps paragraphs; a neural provider gets plain spaces after attribution. */
     fun singleParagraph(text: String): String = text.replace(Regex("[\\s\\u00A0\\u2007\\u202F]+"), " ").trim()
     /** Keep whole words/sentences together to reduce rushed or swallowed linking words. */

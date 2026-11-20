@@ -59,7 +59,14 @@ class SpeechChunkReader(
     override fun close() = reader.close()
 }
 
-data class NarrationPart(val chapter: Chapter, val book: Book, val offset: Int, val text: String)
+data class NarrationPart(val chapter: Chapter, val book: Book, val offset: Int, val text: String) {
+    /** Longer beats are reserved for structural boundaries in the original text. */
+    fun boundaryPause(next: NarrationPart?): Int = when {
+        next == null || next.chapter.id != chapter.id -> 650
+        text.endsWith('\n') || next.offset > offset + text.length -> 420
+        else -> 0
+    }
+}
 class ChapterNarrationQueue(
     private val chapters: List<Chapter>,
     private val books: Map<String, Book>,

@@ -195,16 +195,29 @@ class NarrationQualityTest {
             repeat(160) { assertEquals(1234, pcm.getShort(44 + it * 2).toInt()) }
         } finally { directory.deleteRecursively() }
     }
-    @Test fun paragraphBeatAppendsSilenceWithoutChangingTheSpokenSamples() {
+    @Test fun sentenceDetectionKeepsAbbreviationsDecimalsAndClosingQuotesTogether() {
+        val text = "Dr. Hale measured 1.5 meters. “Ready?” The door opened. A trailing fragment"
+        val sentences = SpeechUtterances.sentences(text, "en-US")
+        assertEquals(text, sentences.joinToString(""))
+        assertEquals(listOf("Dr. Hale measured 1.5 meters.", "“Ready?”", "The door opened.", "A trailing fragment"),
+            sentences.map(String::trim))
+        assertEquals(listOf(true, true, true, false), sentences.map(SpeechUtterances::endsSentence))
+        assertFalse(SpeechUtterances.endsSentence("He went to speak,"))
+    }
+    @Test fun sentenceAndParagraphBeatsPreserveAllSpokenSamples() {
         val directory = Files.createTempDirectory("roadleaf-wave").toFile()
         try {
-            val source = wave(File(directory, "paragraph.wav"), 8000, 80)
-            val joined = WaveAudio.join(listOf(source), directory, tailMs = 420)
-            assertEquals(430L, WaveAudio.durationMs(joined))
+            val first = wave(File(directory, "first.wav"), 8000, 80)
+            val second = wave(File(directory, "second.wav"), 8000, 80, sample = -2345)
+            val joined = WaveAudio.join(listOf(first, second), directory, pausesAfter = listOf(180, 420))
+            assertEquals(620L, WaveAudio.durationMs(joined))
             val pcm = ByteBuffer.wrap(joined.readBytes()).order(ByteOrder.LITTLE_ENDIAN)
-            repeat(80) { assertEquals(1234, pcm.getShort(44 + it * 2).toInt()) }
-            repeat(3360) { assertEquals(0, pcm.getShort(44 + (80 + it) * 2).toInt()) }
-            assertEquals(source, WaveAudio.join(listOf(source), directory))
+            pcm.position(44)
+            repeat(80) { assertEquals(1234, pcm.short.toInt()) }
+            repeat(1440) { assertEquals(0, pcm.short.toInt()) }
+            repeat(80) { assertEquals(-2345, pcm.short.toInt()) }
+            repeat(3360) { assertEquals(0, pcm.short.toInt()) }
+            assertEquals(first, WaveAudio.join(listOf(first), directory))
         } finally { directory.deleteRecursively() }
     }
 }

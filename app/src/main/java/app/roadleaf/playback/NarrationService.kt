@@ -934,16 +934,9 @@ class NarrationService : MediaLibraryService() {
             else ExpeditionJson.ParagraphAttribution()
         val adaptation = AdaptiveCast.prepare(profile, prior, adaptiveVoices, part.chapter.id, part.offset, part.text, context,
             attribution.dialogueSpeakers)
-        // Preserve a beat at source boundaries while keeping mid-paragraph speech windows contiguous.
-        val tailMs = when {
-            !expedition -> 0
-            next == null || next.chapter.id != part.chapter.id -> 650
-            part.text.endsWith('\n') || next.offset > part.offset + part.text.length -> 420
-            else -> 0
-        }
         val rendered = CastSpeechRenderer(speech, cacheDir).render(cleaned(part, profile.usesViewpointNarrators), adaptation.cast, context, sessionSettings, pronounce,
             lookahead = next?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty(),
-            explicitSpeakers = attribution.quoteSpeakers, thoughtSpeaker = attribution.thoughtSpeaker, tailMs = tailMs)
+            explicitSpeakers = attribution.quoteSpeakers, thoughtSpeaker = attribution.thoughtSpeaker, tailMs = part.boundaryPause(next))
         val file = rendered.file
         val duration = withContext(Dispatchers.IO) { WaveAudio.durationMs(file) }
         trace { "render ready offset=${part.offset} elapsed=${SystemClock.elapsedRealtime() - started}ms duration=${duration}ms" }
@@ -1195,7 +1188,7 @@ class NarrationService : MediaLibraryService() {
             val adaptation = AdaptiveCast.prepare(profile, app.learnedCasts.get(learningKey(part)), adaptiveVoices, part.chapter.id, part.offset, part.text, context)
             val next = withContext(Dispatchers.IO) { candidate.peekFollowing() }
             val rendered = CastSpeechRenderer(speech, cacheDir).render(cleaned(part, profile.usesViewpointNarrators), adaptation.cast, context, preferences, transform,
-                lookahead = next?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty())
+                lookahead = next?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty(), tailMs = part.boundaryPause(next))
             val duration = withContext(Dispatchers.IO) { WaveAudio.durationMs(rendered.file) }
             return PreparedWebPage(page, candidate, part, next, checkpoint, saved, profile, context, adaptation.cast, rendered, duration, preferences, transform)
         } catch (error: Throwable) { candidate.close(); throw error }
@@ -1219,7 +1212,7 @@ class NarrationService : MediaLibraryService() {
                 settings.localeTag == prepared.settings.localeTag && settings.pitch == prepared.settings.pitch
             val rendered = if (adaptation.cast == prepared.cast && sameVoice) prepared.rendered
                 else CastSpeechRenderer(speech, cacheDir).render(cleaned(part, prepared.profile.usesViewpointNarrators), adaptation.cast, prepared.context, settings, prepared.pronounce,
-                    lookahead = prepared.following?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty())
+                    lookahead = prepared.following?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty(), tailMs = part.boundaryPause(prepared.following))
             val duration = if (rendered === prepared.rendered) prepared.duration else withContext(Dispatchers.IO) { WaveAudio.durationMs(rendered.file) }
             val file = rendered.file
             awaitTemporaryAudio()

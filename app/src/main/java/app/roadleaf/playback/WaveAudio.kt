@@ -46,20 +46,24 @@ object WaveAudio {
 
     /** Join one bounded text window, keeping all samples and a short beat between utterances.
      * Matching PCM is copied directly; other installed voices are streamed into mono PCM16. */
-    fun join(files: List<File>, directory: File, gapMs: Int = 90, forcePcm16: Boolean = false, tailMs: Int = 0): File {
-        require(files.isNotEmpty() && gapMs in 0..1000 && tailMs in 0..1000)
-        if (tailMs == 0 && files.size == 1 && (!forcePcm16 || layout(files.single()).let { it.format == 1 && it.bits == 16 && it.channels == 1 })) return files.single()
+    fun join(files: List<File>, directory: File, gapMs: Int = 90, forcePcm16: Boolean = false,
+        pausesAfter: List<Int> = emptyList()): File {
+        require(files.isNotEmpty() && gapMs in 0..1000)
+        require(pausesAfter.isEmpty() || pausesAfter.size == files.size && pausesAfter.all { it in 0..1000 })
+        val defaultPauses = List(files.size) { if (it == files.lastIndex) 0 else gapMs }
+        val pauses = pausesAfter.ifEmpty { defaultPauses }
+        if (files.size == 1 && pauses.single() == 0 &&
+            (!forcePcm16 || layout(files.single()).let { it.format == 1 && it.bits == 16 && it.channels == 1 })) return files.single()
         directory.mkdirs()
         val identity = "join-v1:$gapMs:" + files.joinToString("|") { it.name } +
-            (if (forcePcm16) ":pcm16" else "") + (if (tailMs > 0) ":tail=$tailMs" else "")
+            (if (forcePcm16) ":pcm16" else "") + (if (pauses != defaultPauses) ":pauses=${pauses.joinToString(",")}" else "")
         val key = MessageDigest.getInstance("SHA-256").digest(identity.toByteArray()).joinToString("") { "%02x".format(it) }
         val result = File(directory, "$key.wav")
         if (result.exists() && runCatching { durationMs(result) > 0 }.getOrDefault(false)) return result
         val layouts = files.map(::layout)
         val rate = layouts.first().rate
-        val gapFrames = rate.toLong() * gapMs / 1000
-        val tailFrames = rate.toLong() * tailMs / 1000
-        val total = layouts.sumOf { it.frames * rate / it.rate } + gapFrames * (files.size - 1) + tailFrames
+        val pauseFrames = pauses.map { rate.toLong() * it / 1000 }
+        val total = layouts.sumOf { it.frames * rate / it.rate } + pauseFrames.sum()
         require(total * 2 < Int.MAX_VALUE - 44) { "Speech window is too large" }
         val temporary = File(directory, "$key.joining")
         try {
@@ -97,9 +101,8 @@ object WaveAudio {
                             }
                         }
                     }
-                    if (index < files.lastIndex) silence(output, gapFrames * 2)
+                    silence(output, pauseFrames[index] * 2)
                 }
-                silence(output, tailFrames * 2)
             }
             check(temporary.renameTo(result)) { "Could not assemble chapter audio" }
             return result
