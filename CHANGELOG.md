@@ -2,6 +2,11 @@
 
 All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
+## 0.3.39
+
+- Expedition playback adds a short pause between paragraphs and a longer pause between chapters or parts at the selected listening speed.
+- Expedition speaker metadata keeps dialogue with its assigned character. Thought paragraphs can use the configured viewpoint narrator independently of dialogue voices.
+
 ## 0.3.38
 
 - Choose separate female and male narrators for viewpoint-based prose while characters keep their assigned dialogue voices. A line such as `[POV: Name]` can set the viewpoint within a chapter.

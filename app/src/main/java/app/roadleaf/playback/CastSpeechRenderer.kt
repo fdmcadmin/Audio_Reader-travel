@@ -10,8 +10,9 @@ import kotlinx.coroutines.withContext
 class CastSpeechRenderer(private val speech: OfflineSpeech, private val cache: File) {
     data class Rendered(val file: File, val next: DialogueState)
     suspend fun render(text: String, cast: BookVoiceCast, previous: DialogueState, settings: ListeningSettings,
-        pronounce: (String) -> String, lookahead: String = "", explicitSpeakers: List<String> = emptyList()): Rendered {
-        val plan = SceneCast.plan(text, cast, previous, lookahead, explicitSpeakers)
+        pronounce: (String) -> String, lookahead: String = "", explicitSpeakers: List<String> = emptyList(),
+        thoughtSpeaker: String = "", tailMs: Int = 0): Rendered {
+        val plan = SceneCast.plan(text, cast, previous, lookahead, explicitSpeakers, thoughtSpeaker)
         val files = mutableListOf<File>()
         for (utterance in plan.utterances) {
             val replaced = pronounce(utterance.text)
@@ -27,7 +28,7 @@ class CastSpeechRenderer(private val speech: OfflineSpeech, private val cache: F
             }
         }
         val file = withContext(Dispatchers.IO) {
-            if (files.isEmpty()) WaveAudio.pause(cache) else WaveAudio.join(files, File(cache, "speech"))
+            if (files.isEmpty()) WaveAudio.pause(cache) else WaveAudio.join(files, File(cache, "speech"), tailMs = tailMs)
         }
         return Rendered(file, plan.next)
     }

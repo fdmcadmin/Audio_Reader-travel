@@ -1,12 +1,65 @@
 package app.roadleaf
 
 import app.roadleaf.importing.ExpeditionJson
+import app.roadleaf.playback.AdaptiveCast
+import app.roadleaf.playback.AdaptiveVoices
+import app.roadleaf.playback.BookVoiceCast
+import app.roadleaf.playback.CastCharacter
+import app.roadleaf.playback.CharacterPronoun
+import app.roadleaf.playback.DialogueState
+import app.roadleaf.playback.HayaiVoices
+import app.roadleaf.playback.LearnedCast
+import app.roadleaf.playback.SceneCast
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExpeditionJsonTest {
+    @Test fun paragraphMetadataKeepsDialogueAndNarrationSeparate() {
+        val paragraphs = listOf(
+            "She turned. “Stay here.” Mira tapped the display. “I’ll be back.”",
+            "I hope the lights stay on.",
+            "The lights flickered again."
+        )
+        val attributions = listOf(
+            ExpeditionJson.ParagraphAttribution(listOf("Narrator", "Mira"), "dialogue"),
+            ExpeditionJson.ParagraphAttribution(listOf("Mira"), "thought"),
+            ExpeditionJson.ParagraphAttribution(listOf("Narrator"), "narration")
+        )
+        val cast = BookVoiceCast(narratorVoice = "default", femaleNarratorVoice = "female-narrator",
+            maleNarratorVoice = "male-narrator", characters = listOf(
+                CastCharacter("Mira", voice = "mira", pronoun = CharacterPronoun.SHE),
+                CastCharacter("Bram", voice = "bram", pronoun = CharacterPronoun.HE)))
+        var state = DialogueState(sceneViewpoint = "bram")
+        val voices = paragraphs.zip(attributions).map { (text, metadata) ->
+            val plan = SceneCast.plan(text, cast, state, explicitSpeakers = metadata.quoteSpeakers,
+                thoughtSpeaker = metadata.thoughtSpeaker)
+            assertEquals(text, plan.utterances.joinToString("") { it.text })
+            state = plan.next
+            plan.utterances.map { it.voice }
+        }
+        assertEquals(listOf(
+            listOf("male-narrator", "mira", "male-narrator", "mira"),
+            listOf("female-narrator"), listOf("male-narrator")
+        ), voices)
+        assertEquals(listOf("Mira"), attributions.first().copy(mode = "").quoteSpeakers)
+    }
+
+    @Test fun namedSupportingDialogueCanUseAnUnusedPiperVoiceOnItsFirstLine() {
+        val model = "vits-piper-en_US-libritts-high"
+        val narrator = "$model#2#speaker_2"
+        val supporting = "$model#3#speaker_3"
+        val cast = BookVoiceCast(exclusiveVoices = true, narratorVoice = narrator, maleNarratorVoice = narrator)
+        val voices = AdaptiveVoices(engine = HayaiVoices.ENGINE, numberedPiper = listOf(narrator, supporting))
+        val attribution = ExpeditionJson.ParagraphAttribution(listOf("Narrator", "Guard 1"), "dialogue")
+        val text = "“You can go ahead.”"
+        val adaptation = AdaptiveCast.prepare(cast, LearnedCast(), voices, "chapter", 0, text,
+            explicitSpeakers = attribution.dialogueSpeakers)
+        val plan = SceneCast.plan(text, adaptation.cast, DialogueState(), explicitSpeakers = attribution.quoteSpeakers)
+        assertEquals(supporting, plan.utterances.single().voice)
+    }
+
     @Test fun advancesOnlyThroughConsecutiveValidatedChapterNames() {
         assertEquals(listOf(1, 2), ExpeditionJson.contiguousNumbers(null, listOf(2, 4, 1)))
         assertEquals(listOf(3, 4), ExpeditionJson.contiguousNumbers(2, listOf(4, 3, 6)))

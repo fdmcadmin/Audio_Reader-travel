@@ -3,7 +3,9 @@ package app.roadleaf
 import androidx.room.Room
 import app.roadleaf.data.*
 import app.roadleaf.importing.CharacterLorebook
+import app.roadleaf.importing.ExpeditionJson
 import app.roadleaf.playback.*
+import java.io.File
 import java.util.UUID
 
 /** Isolated Room database and metadata-only fixtures; never imports the owner's lore text. */
@@ -29,6 +31,20 @@ class ParagraphProfileChecks(private val app: RoadleafApp, private val report: M
             val people = CharacterLorebook.parse("""{"format":"roadleaf-scene-profiles","version":1,"profileSetId":"fixture-profiles","entries":[{"id":"char_sample","displayName":"01 Sample — Preset","keys":["Sample","Captain Sample"]},{"id":"group","displayName":"Group","keys":["Sample"]}]}""")
             check(people.size == 1 && people.single().name == "Sample" && people.single().aliases == "Captain Sample" && people.single().role == CastRole.AUTO)
             report.add("PASS actual Android JSON import reads only designated metadata from the personal-collection sidecar")
+            val fixture = """{"format":"meridian-narrative-chapter","version":1,"series":"${ExpeditionJson.SERIES}",
+                "chapter":1,"title":"Crossing","sha256":"${"0".repeat(64)}","validated_at":"fixture",
+                "paragraphs":["She paused. “Stay here.”","I hope the lights stay on."],
+                "speakers":["Narrator","Mira"],"paragraph_speakers":[["Narrator","Mira"],"Mira"],
+                "paragraph_modes":["dialogue","thought"]}"""
+            val chapter = ExpeditionJson.parse("${ExpeditionJson.SERIES.removePrefix("The ")} - Chapter 1 - Crossing.json", fixture)
+            val path = File(app.cacheDir, "$book.txt").absolutePath
+            try {
+                ExpeditionJson.saveSpeakers(path, chapter)
+                check(ExpeditionJson.paragraphAt(path, 0).quoteSpeakers.isEmpty())
+                check(ExpeditionJson.paragraphAt(path, chapter.speakerOffsets[0]).quoteSpeakers == listOf("Mira"))
+                check(ExpeditionJson.paragraphAt(path, chapter.speakerOffsets[1]).thoughtSpeaker == "Mira")
+                report.add("PASS chapter import preserves speaker attribution and thought mode at their original text offsets")
+            } finally { File("$path.speakers.json").delete() }
             val voiced = CharacterLorebook.decode("""{"format":"roadleaf-scene-profiles","version":1,"profileSetId":"fixture-profiles","enginePackage":"offline.engine","mainCharacter":"Captain Sample","mainVoice":"male-one","narratorVoice":"narrator","mainPronoun":"HE","entries":[{"id":"char_sample","displayName":"Sample","keys":["Sample"],"voice":"female-one","pronoun":"SHE","delivery":"LOWER"}]}""")
             check(voiced.engine == "offline.engine" && voiced.voices == setOf("female-one", "male-one", "narrator"))
             check(voiced.characters.single().role == CastRole.CUSTOM && voiced.characters.single().pronoun == CharacterPronoun.SHE && voiced.characters.single().delivery == CharacterDelivery.LOWER)

@@ -195,4 +195,16 @@ class NarrationQualityTest {
             repeat(160) { assertEquals(1234, pcm.getShort(44 + it * 2).toInt()) }
         } finally { directory.deleteRecursively() }
     }
+    @Test fun paragraphBeatAppendsSilenceWithoutChangingTheSpokenSamples() {
+        val directory = Files.createTempDirectory("roadleaf-wave").toFile()
+        try {
+            val source = wave(File(directory, "paragraph.wav"), 8000, 80)
+            val joined = WaveAudio.join(listOf(source), directory, tailMs = 420)
+            assertEquals(430L, WaveAudio.durationMs(joined))
+            val pcm = ByteBuffer.wrap(joined.readBytes()).order(ByteOrder.LITTLE_ENDIAN)
+            repeat(80) { assertEquals(1234, pcm.getShort(44 + it * 2).toInt()) }
+            repeat(3360) { assertEquals(0, pcm.getShort(44 + (80 + it) * 2).toInt()) }
+            assertEquals(source, WaveAudio.join(listOf(source), directory))
+        } finally { directory.deleteRecursively() }
+    }
 }

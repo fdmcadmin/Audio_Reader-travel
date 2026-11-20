@@ -11,10 +11,21 @@ import app.roadleaf.playback.ParagraphResume
 
 data class ExpeditionChapter(val number: Int, val part: Int?, val title: String, val text: String,
     val speakers: List<String> = emptyList(), val paragraphSpeakers: List<List<String>> = emptyList(),
-    val speakerOffsets: List<Int> = emptyList())
+    val speakerOffsets: List<Int> = emptyList(), val paragraphModes: List<String> = emptyList())
 
 /** Reads only validated narrative chapters from a folder the listener selected. */
 object ExpeditionJson {
+    data class ParagraphAttribution(val names: List<String> = emptyList(), val mode: String = "") {
+        private val characterNames get() = names.filterNot { it.equals("Narrator", true) }
+        val thoughtSpeaker get() = characterNames.singleOrNull()?.takeIf { mode == "thought" }.orEmpty()
+        // Narrator in the cast list describes the prose around the quotes.
+        val quoteSpeakers get() = when (mode) {
+            "narration", "thought" -> listOf("Narrator")
+            else -> dialogueSpeakers.ifEmpty { names }
+        }
+        val dialogueSpeakers get() = if (mode == "narration" || mode == "thought") emptyList() else characterNames
+    }
+
     const val SOURCE_ID = "expedition-json"
     const val SERIES = "The Meridian Hunt"
     private const val MAX_JSON_BYTES = 2 * 1024 * 1024
@@ -133,7 +144,10 @@ object ExpeditionJson {
         }.orEmpty()
         var at = if (text == body) 0 else title.length + 2
         val offsets = paragraphs.map { paragraph -> at.also { at += paragraph.length + 2 } }
-        return ExpeditionChapter(expected, expectedPart, title, text, cast, assignments, offsets)
+        val modes = json.optJSONArray("paragraph_modes")?.takeIf { it.length() == paragraphs.size }?.let { list ->
+            (0 until list.length()).map { list.optString(it) }
+        }.orEmpty()
+        return ExpeditionChapter(expected, expectedPart, title, text, cast, assignments, offsets, modes)
     }
 
     fun saveSpeakers(path: String, chapter: ExpeditionChapter) {
@@ -141,23 +155,27 @@ object ExpeditionJson {
         if (chapter.paragraphSpeakers.isEmpty()) { if (file.exists()) file.delete(); return }
         val entries = JSONArray()
         chapter.paragraphSpeakers.forEachIndexed { index, names ->
-            entries.put(JSONObject().put("offset", chapter.speakerOffsets[index]).put("names", JSONArray(names)))
+            entries.put(JSONObject().put("offset", chapter.speakerOffsets[index]).put("names", JSONArray(names))
+                .put("mode", chapter.paragraphModes.getOrElse(index) { "" }))
         }
         file.writeText(JSONObject().put("speakers", JSONArray(chapter.speakers)).put("paragraphs", entries).toString())
     }
 
-    fun speakersFor(path: String, offset: Int): List<String> = runCatching {
+    fun paragraphAt(path: String, offset: Int): ParagraphAttribution = runCatching {
         val file = File("$path.speakers.json")
-        if (!file.isFile) return@runCatching emptyList()
+        if (!file.isFile) return@runCatching ParagraphAttribution()
         val entries = JSONObject(file.readText()).getJSONArray("paragraphs")
-        var chosen: JSONArray? = null
+        var chosen: JSONObject? = null
         for (index in 0 until entries.length()) {
             val entry = entries.getJSONObject(index)
             if (entry.getInt("offset") > offset) break
-            chosen = entry.getJSONArray("names")
+            chosen = entry
         }
-        chosen?.let { list -> (0 until list.length()).map(list::getString) }.orEmpty()
-    }.getOrDefault(emptyList())
+        chosen?.let { entry ->
+            val names = entry.getJSONArray("names")
+            ParagraphAttribution((0 until names.length()).map(names::getString), entry.optString("mode"))
+        } ?: ParagraphAttribution()
+    }.getOrDefault(ParagraphAttribution())
 
     /** The first published chapter predates the validated JSON format. Accept only its exact series filename and heading. */
     fun parseLegacyFirst(name: String, source: String): ExpeditionChapter {

@@ -61,7 +61,8 @@ object SceneCast {
             CastRole.NARRATOR -> cast.narratorVoice
         } }.orEmpty()
     }
-    fun plan(text: String, cast: BookVoiceCast, previous: DialogueState, lookahead: String = "", explicitSpeakers: List<String> = emptyList()): CastPlan {
+    fun plan(text: String, cast: BookVoiceCast, previous: DialogueState, lookahead: String = "",
+        explicitSpeakers: List<String> = emptyList(), thoughtSpeaker: String = ""): CastPlan {
         if (!cast.sceneOnly && !cast.usesViewpointNarrators) return VoiceCastPlanner(cast).plan(text, previous, lookahead, explicitSpeakers)
         var state = previous
         val utterances = mutableListOf<CastUtterance>()
@@ -74,8 +75,8 @@ object SceneCast {
             val inactiveVoices = cast.characters.filter { it !in people }.map { it.voice }.filter(String::isNotBlank).toSet() +
                 if (!mainActive && cast.mainVoice.isNotBlank()) setOf(cast.mainVoice) else emptySet()
             val storyVoice = if (cast.usesViewpointNarrators) {
-                if (state.sceneViewpoint.isBlank()) cast.storyVoice
-                else ChapterPerspectives.narratorFor(cast, state.sceneViewpoint)
+                val viewpoint = thoughtSpeaker.ifBlank { state.sceneViewpoint }
+                if (viewpoint.isBlank()) cast.storyVoice else ChapterPerspectives.narratorFor(cast, viewpoint)
             } else viewpointVoice(cast, state.sceneViewpoint).ifBlank { cast.storyVoice.takeUnless { it in inactiveVoices }.orEmpty() }
             val scoped = cast.copy(sceneOnly = false, characters = people,
                 mainCharacter = cast.mainCharacter.takeIf { mainActive }.orEmpty(), mainVoice = cast.mainVoice.takeIf { mainActive }.orEmpty(),

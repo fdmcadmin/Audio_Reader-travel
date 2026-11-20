@@ -927,12 +927,23 @@ class NarrationService : MediaLibraryService() {
         val profile = if (part.book.sourceId == "live-web") sessionCast else libraryCasts[part.book.id] ?: BookVoiceCast()
         val bookKey = learningKey(part)
         val prior = learnedBooks.getOrPut(bookKey) { app.learnedCasts.get(bookKey) }
-        val adaptation = AdaptiveCast.prepare(profile, prior, adaptiveVoices, part.chapter.id, part.offset, part.text, context)
         val next = withContext(Dispatchers.IO) { current.peekFollowing() }
-        val explicitSpeakers = if (part.book.sourceId == ExpeditionJson.SOURCE_ID)
-            withContext(Dispatchers.IO) { ExpeditionJson.speakersFor(part.chapter.textPath, part.offset) } else emptyList()
+        val expedition = part.book.sourceId == ExpeditionJson.SOURCE_ID
+        val attribution = if (expedition)
+            withContext(Dispatchers.IO) { ExpeditionJson.paragraphAt(part.chapter.textPath, part.offset) }
+            else ExpeditionJson.ParagraphAttribution()
+        val adaptation = AdaptiveCast.prepare(profile, prior, adaptiveVoices, part.chapter.id, part.offset, part.text, context,
+            attribution.dialogueSpeakers)
+        // Preserve a beat at source boundaries while keeping mid-paragraph speech windows contiguous.
+        val tailMs = when {
+            !expedition -> 0
+            next == null || next.chapter.id != part.chapter.id -> 650
+            part.text.endsWith('\n') || next.offset > part.offset + part.text.length -> 420
+            else -> 0
+        }
         val rendered = CastSpeechRenderer(speech, cacheDir).render(cleaned(part, profile.usesViewpointNarrators), adaptation.cast, context, sessionSettings, pronounce,
-            lookahead = next?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty(), explicitSpeakers = explicitSpeakers)
+            lookahead = next?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty(),
+            explicitSpeakers = attribution.quoteSpeakers, thoughtSpeaker = attribution.thoughtSpeaker, tailMs = tailMs)
         val file = rendered.file
         val duration = withContext(Dispatchers.IO) { WaveAudio.durationMs(file) }
         trace { "render ready offset=${part.offset} elapsed=${SystemClock.elapsedRealtime() - started}ms duration=${duration}ms" }

@@ -166,7 +166,7 @@ class VoiceCastPlanner(private val cast: BookVoiceCast) {
         var currentActor = previous.actor
         var explicitIndex = 0
         fun explicitActor(): String? {
-            val name = explicitSpeakers.getOrNull(explicitIndex++) ?: return null
+            val name = explicitSpeakers.getOrNull(explicitIndex++) ?: explicitSpeakers.singleOrNull() ?: return null
             return if (name.equals("Narrator", true)) "narrator" else actors[name.lowercase(Locale.ROOT)]
         }
         var pitchScale = previous.pitchScale

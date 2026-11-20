@@ -67,7 +67,7 @@ object AdaptiveCast {
         .digest("$chapter\u0000$offset\u0000$text".toByteArray()).take(16).joinToString("") { "%02x".format(it) }
 
     fun prepare(profile: BookVoiceCast, prior: LearnedCast, voices: AdaptiveVoices, chapter: String, offset: Int,
-        text: String, context: DialogueState = DialogueState()): Plan {
+        text: String, context: DialogueState = DialogueState(), explicitSpeakers: List<String> = emptyList()): Plan {
         if (!profile.enabled) return Plan(profile, prior)
         if (!profile.adaptive) {
             val next = if (profile.usesViewpointNarrators) observe(prior, profile, chapter, offset, text, context) else prior
@@ -120,7 +120,7 @@ object AdaptiveCast {
         }
         fun pronoun(person: LearnedCharacter?) = when (person?.gender) { LearnedGender.MALE -> CharacterPronoun.HE; LearnedGender.FEMALE -> CharacterPronoun.SHE; else -> CharacterPronoun.AUTO }
         val observed = if (profile.sceneOnly && SceneCast.breaks.replace(text, "").isBlank()) prior else
-            observe(prior.copy(people = bindings), profile, chapter, offset, text, context)
+            observe(prior.copy(people = bindings), profile, chapter, offset, text, context, explicitSpeakers)
         val newcomers = mutableListOf<CastCharacter>()
         val nextPeople = if (profile.exclusiveVoices) observed.people.map { person ->
             val configured = profile.characters.firstOrNull { id(it.name) == id(person.name) }
@@ -179,8 +179,10 @@ object AdaptiveCast {
         return Plan(if (prior.windows == 0) active else active.copy(storyVoice = ChapterPerspectives.voice(active, viewpointEvidence, chapter)), next)
     }
 
-    private fun observe(prior: LearnedCast, profile: BookVoiceCast, chapter: String, offset: Int, text: String, context: DialogueState): LearnedCast {
-        val fingerprint = stamp(chapter, offset, text)
+    private fun observe(prior: LearnedCast, profile: BookVoiceCast, chapter: String, offset: Int, text: String,
+        context: DialogueState, explicitSpeakers: List<String> = emptyList()): LearnedCast {
+        val fingerprint = stamp(chapter, offset,
+            if (explicitSpeakers.isEmpty()) text else text + explicitSpeakers.joinToString("\u0000", prefix = "\u0000"))
         if (fingerprint in prior.seen) return prior
         val lead = context.lead.takeLast(180)
         val input = lead + text
@@ -198,6 +200,12 @@ object AdaptiveCast {
         }
         val people = prior.people.associateBy { id(it.name) }.toMutableMap()
         val turns = mutableMapOf<String, Int>(); val viewpoints = mutableMapOf<String, Int>()
+        val annotated = explicitSpeakers.map { aliases[id(it)] ?: it }.associateBy(::id)
+        for ((key, name) in annotated) {
+            if (key !in people && people.size >= MAX_PEOPLE) continue
+            people.putIfAbsent(key, LearnedCharacter(name))
+            turns[key] = 1
+        }
         for (match in named.findAll(masked)) {
             if (match.range.last < lead.length && !(lead.substring(match.range.last + 1).trim().matches(Regex("[,;:—–-]*")) &&
                     text.indexOfFirst { !it.isWhitespace() }.takeIf { it >= 0 }?.let { DialogueQuotes.opening(text, it) } != null)) continue
@@ -212,7 +220,8 @@ object AdaptiveCast {
             val around = input.substring((match.range.first - 160).coerceAtLeast(0), (match.range.last + 100).coerceAtMost(input.length))
             if (!isViewpoint && around.indices.none { DialogueQuotes.opening(around, it) != null } && context.closingQuote == null) continue
             people.putIfAbsent(key, LearnedCharacter(name))
-            if (isViewpoint) viewpoints[key] = (viewpoints[key] ?: 0) + 1 else turns[key] = (turns[key] ?: 0) + 1
+            if (isViewpoint) viewpoints[key] = (viewpoints[key] ?: 0) + 1
+            else if (key !in annotated) turns[key] = (turns[key] ?: 0) + 1
         }
         // A name on one side of the SAME quoted turn and he/she on the other is explicit evidence.
         // Do not carry an untagged speaker across turns or infer gender from a name.
