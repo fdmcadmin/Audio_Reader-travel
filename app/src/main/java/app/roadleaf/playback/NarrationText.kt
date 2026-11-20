@@ -68,7 +68,8 @@ object NarrationText {
         return if (spoken.isBlank()) "Chapter ${prefix.groupValues[1]}" else "Chapter ${prefix.groupValues[1]}: $spoken"
     }
     /** [site] is the page address for webpage text, so that site's own address is never spoken. */
-    fun part(original: String, chapterTitle: String, opening: Boolean, webpage: Boolean, site: String? = null): String {
+    fun part(original: String, chapterTitle: String, opening: Boolean, webpage: Boolean, site: String? = null,
+        preserveSceneBreaks: Boolean = false): String {
         fun spoken(text: String) = otherSites(webpageText(text), site)
         val heading = title(if (webpage) spoken(chapterTitle).trim(' ', '|', '-', '–', '—', ':') else chapterTitle)
         val lines = original.lines().toMutableList()
@@ -82,6 +83,7 @@ object NarrationText {
         }
         val filtered = lines.filterNot { line ->
             val text = line.trim()
+            if (preserveSceneBreaks && SceneCast.breaks.matches(text)) return@filterNot false
             (webpage && ((text.isNotBlank() && spoken(text).none(Char::isLetterOrDigit)) || footerLine.matches(text) ||
                 Regex("^(?:©|copyright)\\s*\\d{4}.*free\\s*web\\s*novel.*$", RegexOption.IGNORE_CASE).matches(text))) ||
                 (text.isNotBlank() && symbolsOnly.matches(text))

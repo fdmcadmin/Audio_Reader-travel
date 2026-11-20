@@ -30,7 +30,8 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             it.localeTag.startsWith("en-", true) && settings.localeTag.startsWith("en-", true)) } else emptyList()
     if (catalog?.enginePackage == "com.brahmadeo.supertonic.tts")
         Text("Supertonic remains available for the narrator and leads. Assign VCTK supporting voices to individual cast members; preview their numbered voices before saving.", style = MaterialTheme.typography.bodySmall)
-    val choices = listOf(Choice("", if (draft.adaptive) "Choose as the reader learns" else "Use narrator")) + voices.map { Choice(it.name, voiceLabel(it.name, catalog?.enginePackage.orEmpty())) }
+    val installedChoices = remember(voices, catalog?.enginePackage) { voices.map { voiceChoice(it, catalog?.enginePackage.orEmpty()) } }
+    val choices = listOf(Choice("", if (draft.adaptive) "Choose as the reader learns" else "Use narrator")) + installedChoices
     val effective = remember(draft, learned, catalog, settings) {
         AdaptiveCast.prepare(draft, learned, catalog?.let { AdaptiveVoices.from(it, settings) } ?: AdaptiveVoices(), "preview", 0, "").cast
     }
@@ -40,7 +41,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
     val auditionMain = draft.mainVoice.ifBlank { effective.mainVoice }
     val sample = "We should stay together. I know the way home."
     @Composable fun role(label: String, voice: String, sample: String, update: (String) -> Unit) {
-        ChoicePicker(label, voice, choices, !busy && matches, onSelect = update)
+        ChoicePicker(label, voice, choices.filter { it.id !in draft.viewpointNarrators }, !busy && matches, onSelect = update)
         val auto = when (label) { "Main character" -> auditionMain; "Female dialogue" -> auditionFemale; else -> auditionMale }
         val resolved = auto.ifBlank { available.narrator }
         Text("Preview: ${voiceLabel(resolved, catalog?.enginePackage.orEmpty()).ifBlank { "Narrator" }}", style = MaterialTheme.typography.bodySmall)
@@ -105,7 +106,8 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
                 }
             }
             val dedicatedVoices = if (draft.exclusiveVoices) draft.characters.filter { it.role == CastRole.CUSTOM }.map { it.voice }.toSet() else emptySet()
-            ChoicePicker("Book narrator", draft.narratorVoice, listOf(Choice("", "Use default narrator")) + voices.filter { it.name !in dedicatedVoices }.map { Choice(it.name, voiceLabel(it.name, catalog?.enginePackage.orEmpty())) }, !busy && matches) {
+            ChoicePicker("Book narrator", draft.narratorVoice, listOf(Choice("", "Use default narrator")) + installedChoices.filter { it.id !in dedicatedVoices }, !busy && matches,
+                onPreview = { onPreview(it, sample, 1f) }) {
                 draft = draft.copy(narratorVoice = it)
             }
             Text("This book can have its own narrator. Other books keep their saved voices.", style = MaterialTheme.typography.bodySmall)
@@ -114,8 +116,26 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
                 draft = draft.copy(enabled = it != "narrator", adaptive = it == "automatic")
             }
             Text("Dialogue keeps each character’s assigned voice. Story narration can follow the chapter’s viewpoint, independently of the book’s main character. Uncertain speakers keep the narrator. Your assignments take priority.", style = MaterialTheme.typography.bodySmall)
-            ChoicePicker("Story narration", if (draft.followViewpoint) "viewpoint" else "narrator", listOf(Choice("viewpoint", "Follow chapter viewpoint"), Choice("narrator", "Narrator by default"))) {
-                draft = draft.copy(followViewpoint = it == "viewpoint")
+            val narrationMode = when {
+                draft.separateViewpointNarrators -> "separate"
+                draft.followViewpoint -> "viewpoint"
+                else -> "narrator"
+            }
+            ChoicePicker("Story narration", narrationMode, listOf(Choice("separate", "Separate female and male viewpoint narrators"),
+                Choice("viewpoint", "Use the viewpoint character’s voice"), Choice("narrator", "Book narrator by default"))) {
+                draft = draft.copy(followViewpoint = it == "viewpoint", separateViewpointNarrators = it == "separate")
+            }
+            if (draft.separateViewpointNarrators) {
+                val dialogueVoices = draft.characters.filter { it.role == CastRole.CUSTOM }.map { it.voice }.toSet() +
+                    setOf(draft.mainVoice, draft.maleVoice, draft.femaleVoice)
+                fun narratorChoices(other: String) = listOf(Choice("", "Use book narrator")) +
+                    installedChoices.filter { it.id !in dialogueVoices && it.id != other }
+                ChoicePicker("Female viewpoint narrator", draft.femaleNarratorVoice, narratorChoices(draft.maleNarratorVoice),
+                    !busy && matches, onPreview = { onPreview(it, sample, 1f) }) { draft = draft.copy(femaleNarratorVoice = it) }
+                ChoicePicker("Male viewpoint narrator", draft.maleNarratorVoice, narratorChoices(draft.femaleNarratorVoice),
+                    !busy && matches, onPreview = { onPreview(it, sample, 1f) }) { draft = draft.copy(maleNarratorVoice = it) }
+                Text("Dialogue keeps the speaker’s voice. Add [POV: Name] on its own line to set the viewpoint within a scene. Roadleaf uses the book narrator when the viewpoint is unclear.",
+                    style = MaterialTheme.typography.bodySmall)
             }
             val chapter = books.firstOrNull { it.id == selectedBook }?.chapterId.orEmpty()
             val perspectiveChoices = listOf(Choice("", "Learn this chapter’s viewpoint"), Choice("@narrator", "Use narrator")) +
@@ -131,12 +151,14 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             if (matches) {
                 val engine = catalog!!.engines.firstOrNull { it.packageName == catalog.enginePackage }?.label ?: catalog.enginePackage
                 Text("Using $engine · ${voices.size} installed ${settings.localeTag} voices. One speech app supplies this cast at a time.", style = MaterialTheme.typography.bodySmall)
+                LibriTtsAvailability(catalog.voices, catalog.enginePackage, settings.localeTag)
                 TextButton(onClick = { onPreview(available.narrator, sample, 1f) }, enabled = !busy) { Text("Hear narrator for comparison") }
                 val selected = listOf(available.narrator, auditionMain, auditionFemale, auditionMale).filter(String::isNotBlank)
                 if (selected.distinct().size < selected.size) Text("Some roles share the same voice. Choose different installed voices below for clearer distinction.", style = MaterialTheme.typography.bodySmall)
                 Text("All previews use the same sentence. Female and male previews let you hear the available defaults even while the book is still learning.", style = MaterialTheme.typography.bodySmall)
             }
-            if (voices.isEmpty()) TextButton(onClick = onRefresh, enabled = !busy) { Text(if (busy) "Loading voices…" else "Refresh installed voices") }
+            if (voices.isEmpty() || catalog?.enginePackage == HayaiVoices.ENGINE)
+                TextButton(onClick = onRefresh, enabled = !busy) { Text(if (busy) "Loading voices…" else "Refresh installed voices") }
             if (matches && voices.size < 2) Text("This engine has fewer than two installed voices for ${settings.localeTag}. Add voices so characters can sound different.", style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = onMoreVoices) { Text("Get more voices") }
             OutlinedTextField(draft.mainCharacter, { draft = draft.copy(mainCharacter = it.take(240)) }, label = { Text("Main character / aliases (optional)") },
@@ -186,7 +208,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
         val reserved = if (!draft.exclusiveVoices) emptySet() else draft.characters.withIndex().filter {
             it.index != index && it.value.role == CastRole.CUSTOM && it.value.voice.isNotBlank()
         }.map { it.value.voice }.toSet() + available.narrator.takeIf(String::isNotBlank).orEmpty()
-        val characterChoices = if (!draft.exclusiveVoices) choices else choices.filter { it.id.isBlank() || it.id !in reserved }
+        val characterChoices = choices.filter { it.id.isBlank() || it.id !in reserved && it.id !in draft.viewpointNarrators }
         AlertDialog(onDismissRequest = { editing = null }, title = { Text("Character voice") }, text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(character.name, { character = character.copy(name = it.take(80)) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())

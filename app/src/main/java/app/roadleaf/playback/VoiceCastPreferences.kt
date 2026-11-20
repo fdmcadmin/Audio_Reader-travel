@@ -24,13 +24,18 @@ class VoiceCastPreferences(context: Context) {
             chapterViewpoints = json.optJSONObject("chapterViewpoints")?.let { chapters -> chapters.keys().asSequence().take(64).associateWith { chapters.getString(it) } }.orEmpty(),
             mainPronoun = CharacterPronoun.entries.firstOrNull { it.name == json.optString("mainPronoun") } ?: CharacterPronoun.AUTO,
             narratorVoice = json.optString("narratorVoice"), sceneOnly = json.optBoolean("sceneOnly"), profileSetId = json.optString("profileSetId"),
-            exclusiveVoices = json.optBoolean("exclusiveVoices")).validated()
+            exclusiveVoices = json.optBoolean("exclusiveVoices"),
+            femaleNarratorVoice = json.optString("femaleNarratorVoice"), maleNarratorVoice = json.optString("maleNarratorVoice"),
+            separateViewpointNarrators = json.optBoolean("separateViewpointNarrators",
+                json.optString("femaleNarratorVoice").isNotBlank() || json.optString("maleNarratorVoice").isNotBlank())).validated()
     }.getOrDefault(BookVoiceCast())
     fun save(book: String, value: BookVoiceCast) {
         require(book.isNotBlank()) { "Choose a book first." }
         val cast = value.validated()
         val json = JSONObject().put("enabled", cast.enabled).put("adaptive", cast.adaptive).put("main", cast.mainCharacter).put("mainVoice", cast.mainVoice)
             .put("followViewpoint", cast.followViewpoint).put("chapterViewpoints", JSONObject(cast.chapterViewpoints)).put("mainPronoun", cast.mainPronoun.name).put("narratorVoice", cast.narratorVoice).put("sceneOnly", cast.sceneOnly).put("profileSetId", cast.profileSetId).put("exclusiveVoices", cast.exclusiveVoices)
+            .put("femaleNarratorVoice", cast.femaleNarratorVoice).put("maleNarratorVoice", cast.maleNarratorVoice)
+            .put("separateViewpointNarrators", cast.separateViewpointNarrators)
             .put("maleVoice", cast.maleVoice).put("femaleVoice", cast.femaleVoice).put("characters", JSONArray().apply { cast.characters.forEach {
                 put(JSONObject().put("name", it.name).put("aliases", it.aliases).put("role", it.role.name).put("voice", it.voice)
                     .put("delivery", it.delivery.name).put("startsLower", it.startsLower).put("pronoun", it.pronoun.name).put("profileId", it.profileId))

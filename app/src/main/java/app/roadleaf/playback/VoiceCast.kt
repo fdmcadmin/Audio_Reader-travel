@@ -12,8 +12,12 @@ data class BookVoiceCast(
     val maleVoice: String = "", val femaleVoice: String = "", val characters: List<CastCharacter> = emptyList(),
     val adaptive: Boolean = true, val followViewpoint: Boolean = true, val chapterViewpoints: Map<String, String> = emptyMap(),
     val mainPronoun: CharacterPronoun = CharacterPronoun.AUTO, val storyVoice: String = "", val narratorVoice: String = "", val sceneOnly: Boolean = false, val profileSetId: String = "",
-    val exclusiveVoices: Boolean = false
+    val exclusiveVoices: Boolean = false,
+    val femaleNarratorVoice: String = "", val maleNarratorVoice: String = "",
+    val separateViewpointNarrators: Boolean = femaleNarratorVoice.isNotBlank() || maleNarratorVoice.isNotBlank()
 ) {
+    val viewpointNarrators get() = setOf(femaleNarratorVoice, maleNarratorVoice).filter(String::isNotBlank).toSet()
+    val usesViewpointNarrators get() = enabled && separateViewpointNarrators && viewpointNarrators.isNotEmpty()
     fun validated(): BookVoiceCast {
         require(mainCharacter.length <= 240 && characters.size <= 120) { "Keep the cast to 120 characters and short names/aliases." }
         characters.forEach { require(it.name.isNotBlank() && it.name.length <= 80 && it.aliases.length <= 240) { "Enter a short character name and aliases." } }
@@ -26,6 +30,13 @@ data class BookVoiceCast(
         if (exclusiveVoices && narratorVoice.isNotBlank()) require(characters.none { it.role == CastRole.CUSTOM && it.voice == narratorVoice }) {
             "The book narrator's voice is already assigned to a character. Choose a different narrator."
         }
+        require(femaleNarratorVoice.isBlank() || femaleNarratorVoice != maleNarratorVoice) {
+            "Choose different female and male viewpoint narrators."
+        }
+        require(viewpointNarrators.none { voice ->
+            voice in listOf(mainVoice, maleVoice, femaleVoice) ||
+                characters.any { it.role == CastRole.CUSTOM && it.voice == voice }
+        }) { "A viewpoint narrator voice is already assigned to dialogue. Choose a different voice." }
         require(chapterViewpoints.size <= 64 && chapterViewpoints.all { (key, name) -> key.isNotBlank() && key.length <= 2048 && name.isNotBlank() && name.length <= 80 }) { "Keep chapter narrator choices to 64 short entries." }
         return copy(mainCharacter = mainCharacter.trim(), characters = characters.map { it.copy(name = it.name.trim(), aliases = it.aliases.trim()) })
     }

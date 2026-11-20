@@ -4,6 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
+val arm64Only = providers.gradleProperty("roadleafArm64Only").map(String::toBoolean).orElse(false)
 android {
     namespace = "app.roadleaf"
     compileSdk = 35
@@ -11,8 +12,13 @@ android {
         applicationId = "app.roadleaf"
         minSdk = 26
         targetSdk = 35
-        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 38
-        versionName = "0.3.35"
+        if (arm64Only.get()) {
+            ndk { abiFilters += "arm64-v8a" }
+        }
+        versionCode = providers.environmentVariable("VERSION_CODE").orNull?.toInt() ?: 41
+        versionName = "0.3.38"
+        manifestPlaceholders["roadleafAppLabel"] = "Roadleaf"
+        manifestPlaceholders["roadleafBrowserLabel"] = "Roadleaf browser reader"
         testInstrumentationRunner = "app.roadleaf.ReaderRegressionInstrumentation"
     }
     signingConfigs {
@@ -31,7 +37,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("privateRelease")
         }
         create("compact") {
@@ -41,7 +47,15 @@ android {
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            matchingFallbacks += listOf("release")
+        }
+        create("personal") {
+            initWith(getByName("compact"))
+            applicationIdSuffix = ".storypreview"
+            versionNameSuffix = "-personal"
+            manifestPlaceholders["roadleafAppLabel"] = "Roadleaf Personal"
+            manifestPlaceholders["roadleafBrowserLabel"] = "Roadleaf Personal browser reader"
             matchingFallbacks += listOf("release")
         }
     }

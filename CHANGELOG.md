@@ -2,6 +2,13 @@
 
 All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
+## 0.3.38
+
+- Choose separate female and male narrators for viewpoint-based prose while characters keep their assigned dialogue voices. A line such as `[POV: Name]` can set the viewpoint within a chapter.
+- HayaiTTS voice pickers identify the LibriTTS High and LibriTTS-R Medium packs and show the exact speaker IDs reported by the engine.
+- The NovelAI reader can start at highlighted story text or the first visible story word. Named story links retain their own library entries and voice assignments.
+- The compact test build supports an ARM64-only package with `-ProadleafArm64Only=true`. The default build still supports its existing CPU architectures.
+
 ## Unreleased — Expedition parts and corrections
 
 - Validated `Meridian Hunt - Chapter N Part P - Title.json` files appear as separate entries within the Expedition book. Parts play in number order; a missing part stops the queue at the gap. A part file replaces the prior whole-chapter entry for that chapter number.

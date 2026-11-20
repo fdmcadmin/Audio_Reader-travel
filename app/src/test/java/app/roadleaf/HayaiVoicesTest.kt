@@ -13,6 +13,7 @@ import app.roadleaf.playback.VoiceDelegation
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -20,6 +21,32 @@ class HayaiVoicesTest {
     private val female = "kokoro-multi-lang-v1_1#0#af_alloy"
     private val male = "kokoro-multi-lang-v1_1#1#am_adam"
     private val chinese = "kokoro-multi-lang-v1_1#80#zf_001"
+
+    @Test fun librittsChoicesKeepExactIdsAndSeparateTheTwoPacks() {
+        val high = "en_US-libritts-high#12"
+        val medium = "vits-piper-en_US-libritts_r-medium#12#6104"
+        val engine = HayaiVoices.ENGINE
+        assertEquals(HayaiVoices.LibriTtsPack.HIGH, HayaiVoices.libriTts(high, engine)?.pack)
+        assertEquals(HayaiVoices.LibriTtsPack.R_MEDIUM, HayaiVoices.libriTts(medium, engine)?.pack)
+        assertEquals(12, HayaiVoices.libriTts(medium, engine)?.number)
+        val voice = OfflineVoiceOption(medium, HayaiVoices.locale(medium, "en", engine), 300, 300)
+        assertEquals("en-US", voice.localeTag)
+        val choice = voiceChoice(voice, engine)
+        assertEquals(medium, choice.id)
+        assertEquals(medium, choice.detail)
+        assertEquals("Piper LibriTTS-R Medium · speaker 12", choice.title)
+        assertEquals(VoiceDelegation.Gender.UNKNOWN, VoiceDelegation.gender(medium))
+    }
+
+    @Test fun aPackOnlyIdIsNotTreatedAsAnInstalledSpeaker() {
+        val model = "vits-piper-en_US-libritts-high"
+        val engine = HayaiVoices.ENGINE
+        assertEquals(HayaiVoices.LibriTtsPack.HIGH, HayaiVoices.libriTts(model, engine)?.pack)
+        assertNull(HayaiVoices.libriTts(model, engine)?.number)
+        assertNull(HayaiVoices.libriTts("$model#oops", engine))
+        assertNull(HayaiVoices.libriTts(model, "other.engine"))
+        assertEquals("en-GB", HayaiVoices.locale("vits-piper-en_GB-alba-medium", "en-GB", engine))
+    }
 
     @Test fun englishSpeakersInMultilingualBundleAppearUnderEnglish() {
         assertEquals("en-US", HayaiVoices.locale(female, "zh-CN", HayaiVoices.ENGINE))

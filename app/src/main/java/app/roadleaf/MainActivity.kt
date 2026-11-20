@@ -194,6 +194,22 @@ class MainActivity : ComponentActivity() {
                 if (imported.engine == "com.brahmadeo.supertonic.tts")
                     require(catalog?.enginePackage == imported.engine) { "Choose Supertonic in Voice, refresh installed voices, then import this lorebook to keep its attached voices." }
                 val installed = catalog?.voices?.filter { it.localeTag.equals(settings.localeTag, true) }?.map { it.name }.orEmpty()
+                if (imported.engine == HayaiVoices.ENGINE && imported.cast.usesViewpointNarrators) {
+                    val profile = imported.cast
+                    val configuredPiper = (profile.viewpointNarrators + listOf(profile.narratorVoice, profile.maleVoice, profile.femaleVoice) +
+                        profile.characters.filter { it.role == CastRole.CUSTOM }.map { it.voice }).filter {
+                        HayaiVoices.libriTts(it, HayaiVoices.ENGINE) != null
+                    }
+                    if (configuredPiper.isNotEmpty()) {
+                        require(catalog?.enginePackage == HayaiVoices.ENGINE && settings.localeTag.equals("en-US", true)) {
+                            "Save HayaiTTS and English (United States) under Voice, refresh voices, then import this Piper cast."
+                        }
+                        val unavailable = configuredPiper.toSet() - installed.toSet()
+                        require(unavailable.isEmpty()) {
+                            "HayaiTTS did not report ${unavailable.first()}. Install the matching Piper pack, refresh voices, then try again."
+                        }
+                    }
+                }
                 val delegated = VoiceDelegation.assign(imported.cast, installed, settings.voiceName.ifBlank { imported.cast.narratorVoice })
                 vm.app.casts.save(book, delegated.cast)
                 send(NarrationService.APPLY_CAST, Bundle().apply { putString("book", book) })
@@ -422,7 +438,7 @@ class MainActivity : ComponentActivity() {
                         if (novelAiAdded) item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             Text("NovelAI", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                             Text("Your NovelAI stories, read in your browser", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Open your story in your browser, tap inside the story box, tap the Roadleaf bubble, then From top or Resume. New text is read as NovelAI writes it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Open your story and use the Roadleaf bubble. Highlight text for Read from here, or scroll and choose Read from top of visible page.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { openNovelAi() }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Open NovelAI") }
                                 TextButton(onClick = { startActivity(Intent(this@MainActivity, NovelAiBrowserActivity::class.java)) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("How to read it") }
@@ -433,7 +449,11 @@ class MainActivity : ComponentActivity() {
                         if (books.isEmpty()) item { Text("Your imported books will appear here.", style = MaterialTheme.typography.bodyMedium); TextButton(onClick = vm::sample, enabled = !busy) { Text("Try a short voice test") } }
                         items(books, key = { it.id }) { book -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
                             Text(book.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold); Text(book.author, style = MaterialTheme.typography.bodySmall)
-                            Text("Available offline", style = MaterialTheme.typography.labelMedium)
+                            Text(if (book.sourceId == BrowserStory.SOURCE) "NovelAI manuscript · separate voice profile" else "Available offline", style = MaterialTheme.typography.labelMedium)
+                            if (book.sourceId == BrowserStory.SOURCE) TextButton(onClick = {
+                                startActivity(Intent(this@MainActivity, NovelAiBrowserActivity::class.java)
+                                    .putExtra("novelAiStoryId", book.id))
+                            }) { Text("Link / read this story in NovelAI") }
                             Row { Button(onClick = { load(book.id) }) { Text("Listen") }; TextButton(onClick = { vm.showChapters(book.id); showQueue = true }, enabled = !busy) { Text("Chapters") } }
                             TextButton(onClick = { castBook = book.id; tab = 2; voiceSection = 1 }) { Text("Character voices") }
                             TextButton(onClick = { send(NarrationService.RESUME_PARAGRAPH, Bundle().apply { putString("bookId", book.id) }) }, enabled = !busy && controller != null) { Text("Resume paragraph") }
@@ -449,7 +469,7 @@ class MainActivity : ComponentActivity() {
                         item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Read in your own browser", style = MaterialTheme.typography.titleMedium)
                             Text("Roadleaf can read the page your browser shows, with your browser's sign-ins: tap the Roadleaf bubble, then Read page. When a chapter ends, open the next one in your browser and press Play.")
-                            if (novelAiAdded) Text("NovelAI stories are read the same way: tap inside the story box, then From top or Resume on the bubble.", style = MaterialTheme.typography.bodySmall)
+                            if (novelAiAdded) Text("In NovelAI, the bubble can also start at highlighted text or the first visible story word.", style = MaterialTheme.typography.bodySmall)
                             Button(onClick = { startActivity(Intent(this@MainActivity, NovelAiBrowserActivity::class.java)) }) { Text("Set up browser reading") }
                         } } }
                         item { TextButton(onClick = { showSourceHelp = !showSourceHelp }) { Text(if (showSourceHelp) "Hide source details" else "Supported sources & imports") }; if (showSourceHelp) Text("Any site: Read webpage reads the chapter text a page shows, then follows its Next link. Sign in on sites that have accounts; Roadleaf reads only what your account can see.\n\nAO3: Download → EPUB in your browser for offline copies. Official authorized EPUB links also work.\n\nAuthor-direct: download an authorized EPUB/TXT, then import.") }

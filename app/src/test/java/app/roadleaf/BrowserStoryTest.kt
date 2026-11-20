@@ -8,6 +8,15 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class BrowserStoryTest {
+    @Test fun selectedTextStartsAtTheFirstSelectedCharacterAndIgnoresAnOldCaret() {
+        val text = "First line.\r\nSecond line."
+        assertEquals(13, BrowserStory.selectionOffset(text, 13, 19))
+        assertEquals(13, BrowserStory.selectionOffset(text, 19, 13))
+        assertEquals(12, BrowserStory.offsetOf(text, 13))
+        assertNull(BrowserStory.selectionOffset(text, 13, 13))
+        assertNull(BrowserStory.selectionOffset(text, -1, 13))
+        assertNull(BrowserStory.selectionOffset(text, 13, 100))
+    }
     @Test fun linkedStoryMustMatchSavedTextRatherThanLastBookOrCharacterNames() {
         val saved = "An original traveller crossed a quiet valley and met a guide.\n"
         val other = "A different tale has the same guide but begins in another village.\n"

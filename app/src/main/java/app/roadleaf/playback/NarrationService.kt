@@ -794,11 +794,11 @@ class NarrationService : MediaLibraryService() {
         if (libraryCasts.values.any { it.enabled && it.adaptive }) prepareVoiceOptions(sessionSettings)
         castChapter = saved?.chapterId.orEmpty()
         castState = if (timingMatches) VoiceCastPreferences.state(chapterTiming.getString("$timingKey:castContext", "")) else DialogueState()
-        if (saved != null && sessionCast.sceneOnly) {
+        if (saved != null && (sessionCast.sceneOnly || sessionCast.usesViewpointNarrators)) {
             val chapter = activeChapters.firstOrNull { it.id == saved.chapterId }
             if (chapter != null) {
                 val presence = withContext(Dispatchers.IO) { SceneCast.before(sessionCast, File(chapter.textPath).bufferedReader(), saved.textOffset) }
-                castState = castState.copy(sceneNames = presence.sceneNames, sceneExplicit = presence.sceneExplicit)
+                castState = castState.copy(sceneNames = presence.sceneNames, sceneExplicit = presence.sceneExplicit, sceneViewpoint = presence.sceneViewpoint)
             }
         }
         chapterClock.reset(saved?.let { "chapter:${it.chapterId}" }, if (timingMatches) chapterTiming.getLong("$timingKey:startMs", 0) else 0)
@@ -931,7 +931,7 @@ class NarrationService : MediaLibraryService() {
         val next = withContext(Dispatchers.IO) { current.peekFollowing() }
         val explicitSpeakers = if (part.book.sourceId == ExpeditionJson.SOURCE_ID)
             withContext(Dispatchers.IO) { ExpeditionJson.speakersFor(part.chapter.textPath, part.offset) } else emptyList()
-        val rendered = CastSpeechRenderer(speech, cacheDir).render(cleaned(part), adaptation.cast, context, sessionSettings, pronounce,
+        val rendered = CastSpeechRenderer(speech, cacheDir).render(cleaned(part, profile.usesViewpointNarrators), adaptation.cast, context, sessionSettings, pronounce,
             lookahead = next?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty(), explicitSpeakers = explicitSpeakers)
         val file = rendered.file
         val duration = withContext(Dispatchers.IO) { WaveAudio.durationMs(file) }
@@ -955,8 +955,9 @@ class NarrationService : MediaLibraryService() {
         return MediaItem.Builder().setMediaId("${part.chapter.id}:${part.offset}").setUri(file.toURI().toString())
             .setMediaMetadata(MediaMetadata.Builder().setTitle(part.chapter.title).setArtist(part.book.title).setExtras(extras).setMediaType(MediaMetadata.MEDIA_TYPE_AUDIO_BOOK_CHAPTER).build()).build()
     }
-    private fun cleaned(part: NarrationPart) = (part.book.sourceId == "live-web").let { web ->
-        NarrationText.part(part.text, part.chapter.title, part.offset == 0, web, site = if (web) part.chapter.id else null)
+    private fun cleaned(part: NarrationPart, preserveSceneBreaks: Boolean = false) = (part.book.sourceId == "live-web").let { web ->
+        NarrationText.part(part.text, part.chapter.title, part.offset == 0, web, site = if (web) part.chapter.id else null,
+            preserveSceneBreaks = preserveSceneBreaks)
     }
     private fun learningKey(part: NarrationPart) = if (part.book.sourceId == "live-web") WebBookLinks.resolve(part.chapter.id)?.bookUrl ?: part.book.id else part.book.id
     private fun activeBookKey(): String? = webPage?.url?.let { WebBookLinks.resolve(it)?.bookUrl } ?: (
@@ -1175,14 +1176,14 @@ class NarrationService : MediaLibraryService() {
         try {
             val part = requireNotNull(candidate.peek()) { "No readable chapter text" }
             var context = VoiceCastPreferences.state(checkpoint?.castContext)
-            if (profile.sceneOnly && part.offset > 0) {
+            if ((profile.sceneOnly || profile.usesViewpointNarrators) && part.offset > 0) {
                 val presence = withContext(Dispatchers.Default) { SceneCast.before(profile, StringReader(page.text), part.offset) }
-                context = context.copy(sceneNames = presence.sceneNames, sceneExplicit = presence.sceneExplicit)
+                context = context.copy(sceneNames = presence.sceneNames, sceneExplicit = presence.sceneExplicit, sceneViewpoint = presence.sceneViewpoint)
             }
             if (profile.enabled && profile.adaptive) prepareVoiceOptions(preferences)
             val adaptation = AdaptiveCast.prepare(profile, app.learnedCasts.get(learningKey(part)), adaptiveVoices, part.chapter.id, part.offset, part.text, context)
             val next = withContext(Dispatchers.IO) { candidate.peekFollowing() }
-            val rendered = CastSpeechRenderer(speech, cacheDir).render(cleaned(part), adaptation.cast, context, preferences, transform,
+            val rendered = CastSpeechRenderer(speech, cacheDir).render(cleaned(part, profile.usesViewpointNarrators), adaptation.cast, context, preferences, transform,
                 lookahead = next?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty())
             val duration = withContext(Dispatchers.IO) { WaveAudio.durationMs(rendered.file) }
             return PreparedWebPage(page, candidate, part, next, checkpoint, saved, profile, context, adaptation.cast, rendered, duration, preferences, transform)
@@ -1206,7 +1207,7 @@ class NarrationService : MediaLibraryService() {
             val sameVoice = settings.enginePackage == prepared.settings.enginePackage && settings.voiceName == prepared.settings.voiceName &&
                 settings.localeTag == prepared.settings.localeTag && settings.pitch == prepared.settings.pitch
             val rendered = if (adaptation.cast == prepared.cast && sameVoice) prepared.rendered
-                else CastSpeechRenderer(speech, cacheDir).render(cleaned(part), adaptation.cast, prepared.context, settings, prepared.pronounce,
+                else CastSpeechRenderer(speech, cacheDir).render(cleaned(part, prepared.profile.usesViewpointNarrators), adaptation.cast, prepared.context, settings, prepared.pronounce,
                     lookahead = prepared.following?.takeIf { it.chapter.id == part.chapter.id }?.text.orEmpty())
             val duration = if (rendered === prepared.rendered) prepared.duration else withContext(Dispatchers.IO) { WaveAudio.durationMs(rendered.file) }
             val file = rendered.file

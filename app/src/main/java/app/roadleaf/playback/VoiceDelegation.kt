@@ -61,7 +61,7 @@ object VoiceDelegation {
         if (voices.isEmpty()) return Result(cast, 0, emptyList(), emptyList(), false, 0)
         val usable = voices.toSet()
         val activeNarrator = narrator.takeIf { it in usable } ?: voices.firstOrNull().orEmpty()
-        val pool = voices.filter { it != activeNarrator }
+        val pool = voices.filter { it != activeNarrator && it !in cast.viewpointNarrators }
         val uses = mutableMapOf<String, Int>()
         if (activeNarrator.isNotBlank()) uses[activeNarrator] = 1
         val missing = linkedSetOf<String>()

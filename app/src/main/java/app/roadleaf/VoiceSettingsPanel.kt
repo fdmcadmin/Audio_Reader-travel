@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -11,23 +12,36 @@ import androidx.compose.ui.unit.dp
 import app.roadleaf.playback.*
 import java.util.Locale
 
-internal data class Choice(val id: String, val title: String, val detail: String = "")
+internal data class Choice(val id: String, val title: String, val detail: String = "", val pack: HayaiVoices.LibriTtsPack? = null)
 
 @Composable internal fun ChoicePicker(label: String, selected: String, choices: List<Choice>, enabled: Boolean = true,
     onPreview: ((String) -> Unit)? = null, onSelect: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
+    var pack by remember { mutableStateOf<HayaiVoices.LibriTtsPack?>(null) }
     Text(label, style = MaterialTheme.typography.labelLarge)
-    OutlinedButton(onClick = { query = ""; expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+    OutlinedButton(onClick = { query = ""; pack = null; expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
         Text(choices.firstOrNull { it.id == selected }?.title ?: selected.ifBlank { "Automatic" }, Modifier.weight(1f)); Text("▾")
     }
     if (expanded) AlertDialog(onDismissRequest = { expanded = false }, title = { Text(label) }, text = {
         Column {
-            if (choices.size > 20) OutlinedTextField(query, { query = it }, label = { Text("Find a voice") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            val shown = if (query.isBlank()) choices else choices.filter {
-                it.title.contains(query, true) || it.id.contains(query, true) || it.detail.contains(query, true)
+            val packs = remember(choices) { choices.mapNotNull { it.pack }.distinct() }
+            if (packs.isNotEmpty()) {
+                FilterChip(selected = pack == null, onClick = { pack = null }, label = { Text("All voices") })
+                packs.forEach { model ->
+                    FilterChip(selected = pack == model, onClick = { pack = model }, label = { Text(model.label) })
+                }
             }
-            LazyColumn(Modifier.heightIn(max = 360.dp)) {
+            if (choices.size > 20 || packs.isNotEmpty()) OutlinedTextField(query, { query = it }, label = { Text("Find a voice") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            val shown = remember(choices, pack, query) {
+                val search = query.trim()
+                choices.filter { choice ->
+                    (pack == null || choice.pack == pack) && (search.isEmpty() ||
+                        choice.title.contains(search, true) || choice.id.contains(search, true) || choice.detail.contains(search, true))
+                }
+            }
+            if (shown.isEmpty()) Text("No voices match this search.", style = MaterialTheme.typography.bodySmall)
+            LazyColumn(Modifier.weight(1f, fill = false).heightIn(max = 360.dp)) {
                 items(shown, key = { it.id }) { choice ->
                 ListItem(headlineContent = { Text(choice.title) }, supportingContent = { if (choice.detail.isNotBlank()) Text(choice.detail) },
                     leadingContent = { RadioButton(selected = selected == choice.id, onClick = null) },
@@ -37,6 +51,36 @@ internal data class Choice(val id: String, val title: String, val detail: String
             }
         }
     }, confirmButton = { TextButton(onClick = { expanded = false }) { Text("Close") } })
+}
+
+internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: String = ""): Choice {
+    val model = HayaiVoices.libriTts(voice.name, engine)
+    return Choice(voice.name, voiceLabel(voice.name, engine),
+        if (model == null) detail else listOf(detail, voice.name).filter(String::isNotBlank).joinToString("\n"),
+        model?.pack)
+}
+
+@Composable internal fun LibriTtsAvailability(voices: List<OfflineVoiceOption>, engine: String, locale: String) {
+    if (engine != HayaiVoices.ENGINE) return
+    val packs = remember(voices) {
+        voices.mapNotNull { voice -> HayaiVoices.libriTts(voice.name, HayaiVoices.ENGINE)?.let { it to voice.name } }
+            .groupBy { it.first.pack }
+    }
+    if (packs.isEmpty()) {
+        Text("For Piper LibriTTS, install High or LibriTTS-R Medium in HayaiTTS, then refresh voices here.", style = MaterialTheme.typography.bodySmall)
+        return
+    }
+    if (!locale.equals("en-US", true)) {
+        Text("Set Language / accent to English (United States) to show LibriTTS speakers.", style = MaterialTheme.typography.bodySmall)
+    }
+    packs.forEach { (pack, entries) ->
+        val speakers = entries.mapNotNull { it.first.number }.distinct()
+        Text(if (speakers.isEmpty()) "${pack.label} · HayaiTTS reports the pack only"
+            else "${pack.label} · ${speakers.size} speakers reported by HayaiTTS", style = MaterialTheme.typography.bodySmall)
+        val sampleId = entries.minBy { it.first.number ?: Int.MAX_VALUE }.second
+        SelectionContainer { Text("Voice ID: $sampleId", style = MaterialTheme.typography.bodySmall) }
+        if (speakers.isEmpty()) Text("Update HayaiTTS and refresh to check for separate speaker choices.", style = MaterialTheme.typography.bodySmall)
+    }
 }
 
 @Composable fun VoiceSettingsPanel(
@@ -75,9 +119,9 @@ internal data class Choice(val id: String, val title: String, val detail: String
         ChoicePicker("Language / accent", draft.localeTag, locales.map { Choice(it, Locale.forLanguageTag(it).displayName) }, !busy) { draft = draft.copy(localeTag = it, voiceName = "") }
         val voiceChoices = listOf(Choice("", "Automatic offline voice", "Prefers a matching accent and quick preparation")) + voices.filter { it.localeTag == draft.localeTag || (draft.enginePackage == NativeKokoro.ENGINE_ID && it.localeTag.startsWith("en-", ignoreCase = true)) }.map {
             val quality = if (it.quality >= 400) "Higher quality" else if (it.quality <= 200) "Basic quality" else "Standard quality"
-            val friendly = voiceLabel(it.name, catalog?.enginePackage.orEmpty())
-            Choice(it.name, friendly, "$quality • ${Locale.forLanguageTag(it.localeTag).displayName}")
+            voiceChoice(it, catalog?.enginePackage.orEmpty(), "$quality • ${Locale.forLanguageTag(it.localeTag).displayName}")
         }
+        if (catalogMatches) LibriTtsAvailability(voices, catalog!!.enginePackage, draft.localeTag)
         ChoicePicker("Voice", draft.voiceName, voiceChoices, !busy && catalogMatches) { draft = draft.copy(voiceName = it) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { onRefresh(draft.enginePackage) }, enabled = !busy && canControl) { Text(if (busy) "Loading voices…" else "Refresh voices") }
@@ -105,7 +149,14 @@ internal data class Choice(val id: String, val title: String, val detail: String
     }
 }
 
-internal fun voiceLabel(name: String, engine: String): String = if (NativeVctk.speakerId(name) != null) {
+internal fun voiceLabel(name: String, engine: String): String {
+    HayaiVoices.libriTts(name, engine)?.let { voice ->
+        return voice.number?.let { "${voice.pack.label} · speaker $it" } ?: voice.pack.label
+    }
+    return standardVoiceLabel(name, engine)
+}
+
+private fun standardVoiceLabel(name: String, engine: String): String = if (NativeVctk.speakerId(name) != null) {
     "VCTK supporting voice ${NativeVctk.speakerId(name)}"
 } else if (engine == NativeKokoro.ENGINE_ID) {
     NativeKokoro.speakerName(name)?.replace("_", " ")?.replaceFirstChar { it.uppercase() } ?: name

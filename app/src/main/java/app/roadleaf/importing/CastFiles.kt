@@ -51,6 +51,8 @@ object CastFiles {
             .put("enabled", cast.enabled).put("adaptive", cast.adaptive).put("followViewpoint", cast.followViewpoint).put("sceneOnly", cast.sceneOnly).put("exclusiveVoices", cast.exclusiveVoices)
             .put("mainCharacter", cast.mainCharacter).put("mainVoice", cast.mainVoice).put("mainPronoun", cast.mainPronoun.name)
             .put("narratorVoice", cast.narratorVoice).put("maleVoice", cast.maleVoice).put("femaleVoice", cast.femaleVoice)
+            .put("femaleNarratorVoice", cast.femaleNarratorVoice).put("maleNarratorVoice", cast.maleNarratorVoice)
+            .put("separateViewpointNarrators", cast.separateViewpointNarrators)
             .put("profileSetId", cast.profileSetId).put("chapterViewpoints", JSONObject(cast.chapterViewpoints))
             .put("characters", JSONArray().apply { cast.characters.forEach {
                 put(JSONObject().put("name", it.name).put("aliases", it.aliases).put("role", it.role.name).put("voice", it.voice)
@@ -99,7 +101,11 @@ object CastFiles {
             (existing.chapterViewpoints + viewpoints).entries.take(64).associate { it.key to it.value },
             enumOr(root.optString("mainPronoun"), CharacterPronoun.AUTO), narratorVoice = root.optString("narratorVoice").take(160),
             sceneOnly = root.optBoolean("sceneOnly"), profileSetId = root.optString("profileSetId").take(120).ifBlank { existing.profileSetId },
-            exclusiveVoices = root.optBoolean("exclusiveVoices", existing.exclusiveVoices))
+            exclusiveVoices = root.optBoolean("exclusiveVoices", existing.exclusiveVoices),
+            femaleNarratorVoice = root.optString("femaleNarratorVoice", existing.femaleNarratorVoice).take(160),
+            maleNarratorVoice = root.optString("maleNarratorVoice", existing.maleNarratorVoice).take(160),
+            separateViewpointNarrators = root.optBoolean("separateViewpointNarrators", existing.separateViewpointNarrators ||
+                root.optString("femaleNarratorVoice").isNotBlank() || root.optString("maleNarratorVoice").isNotBlank()))
         return Imported(Kind.CAST, cast.validated(), supplied.size, supplied.size, root.optString("enginePackage"))
     }
 
@@ -126,7 +132,7 @@ object CastFiles {
         }
         val added = imported.filter { fresh -> existing.characters.none { same(it, fresh) } }
         val room = (LorebookCast.MAX_CHARACTERS - kept.size).coerceAtLeast(0)
-        val claimed = mutableSetOf<String>().apply { existing.narratorVoice.takeIf(String::isNotBlank)?.let(::add) }
+        val claimed = existing.viewpointNarrators.toMutableSet().apply { existing.narratorVoice.takeIf(String::isNotBlank)?.let(::add) }
         val unique = (kept + added.take(room)).map { person ->
             if (person.role == CastRole.CUSTOM && person.voice.isNotBlank() && !claimed.add(person.voice)) person.copy(role = CastRole.AUTO, voice = "") else person
         }
