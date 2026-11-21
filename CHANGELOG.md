@@ -2,6 +2,10 @@
 
 All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
+## 0.3.43
+
+- Use the direct Supertonic synthesis entry point to avoid a startup crash in optimized Android builds.
+
 ## 0.3.42
 
 - Supertonic 3 includes the fixed Step 3 RVS presets accepted by the production resolver alongside the existing voices. The model already installed by Roadleaf works with the new presets.

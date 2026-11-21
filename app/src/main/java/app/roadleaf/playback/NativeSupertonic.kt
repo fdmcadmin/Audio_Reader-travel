@@ -1,7 +1,6 @@
 package app.roadleaf.playback
 
 import android.content.Context
-import com.k2fsa.sherpa.onnx.GenerationConfig
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
@@ -9,7 +8,6 @@ import com.k2fsa.sherpa.onnx.OfflineTtsSupertonicModelConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.DataInputStream
 import java.io.File
@@ -115,8 +113,10 @@ internal class NativeSupertonic(private val context: Context) {
             if (!audio.exists() || audio.length() <= 44) {
                 outputFolder.mkdirs()
                 val owner = currentCoroutineContext()
-                val generated = model().generateWithConfigAndCallback(text, GenerationConfig(sid = sid, speed = speed,
-                    extra = mapOf("lang" to "en"))) { if (owner.isActive) 1 else 0 }
+                owner.ensureActive()
+                // The JNI callback looks up a typed invoke method that R8 may replace with a generic bridge.
+                // Supertonic defaults to English and the direct call retains the chosen voice and rate.
+                val generated = model().generate(text, sid = sid, speed = speed)
                 owner.ensureActive()
                 check(generated.samples.isNotEmpty()) { "Supertonic returned no speech for this passage." }
                 val partial = File(outputFolder, "$key.part")
