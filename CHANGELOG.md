@@ -2,6 +2,11 @@
 
 All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
+## 0.3.42
+
+- Supertonic 3 includes the fixed Step 3 RVS presets accepted by the production resolver alongside the existing voices. The model already installed by Roadleaf works with the new presets.
+- Importing a cast or lorebook JSON asks whether to auto-assign voices from a matching built-in language pack or keep the file's choices.
+
 ## 0.3.41
 
 - Roadleaf can run Supertonic 3 locally after a one-time in-app model download. The English voice picker includes ten stock voices, expressive variants, and blends from two to four stock voices.

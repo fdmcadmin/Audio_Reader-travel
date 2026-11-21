@@ -192,6 +192,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
 }
 
 internal fun voiceLabel(name: String, engine: String): String {
+    SupertonicStep3Pack.name(name)?.let { return "Roadleaf Step 3 · $it" }
     SupertonicVoiceIndex.label(name)?.let { return "Supertonic 3 · $it" }
     HayaiVoices.libriTts(name, engine)?.let { voice ->
         return voice.number?.let { "${voice.pack.label} · speaker $it" } ?: voice.pack.label

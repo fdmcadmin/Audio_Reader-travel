@@ -31,7 +31,9 @@ object VoiceDelegation {
     /** Gender only where the engine labels it in the voice ID; never guessed from how a name sounds. */
     fun gender(voice: String): Gender {
         if (HayaiVoices.isEnglishKokoro(voice)) return HayaiVoices.gender(voice)
-        SupertonicVoiceIndex.label(voice)?.let { return if (it.startsWith('F')) Gender.FEMALE else Gender.MALE }
+        (SupertonicVoiceIndex.label(voice) ?: SupertonicStep3Pack.name(voice))?.let {
+            return if (it.startsWith('F')) Gender.FEMALE else Gender.MALE
+        }
         val id = voice.lowercase(Locale.ROOT)
         // Kokoro v1.0 speaker IDs encode regional accent and gender in their names.
         val nativeSpeaker = NativeKokoro.speakerName(id)
@@ -55,7 +57,40 @@ object VoiceDelegation {
         else -> Gender.UNKNOWN
     }
 
-    fun assign(cast: BookVoiceCast, installed: List<String>, narrator: String): Result {
+    fun assignBuiltIn(cast: BookVoiceCast, voices: List<String>, currentNarrator: String): Result {
+        require(voices.isNotEmpty()) { "Set up a built-in voice pack for this language first." }
+        val usable = voices.toSet()
+        val narrator = cast.narratorVoice.takeIf { it in usable } ?: currentNarrator.takeIf { it in usable } ?: voices.first()
+        val manualDialogue = cast.characters.filter { it.role == CastRole.CUSTOM }.map { it.voice }.toSet() +
+            setOf(cast.mainVoice, cast.maleVoice, cast.femaleVoice)
+        val narratorVoices = mutableSetOf<String>()
+        fun viewpoint(current: String, wanted: Gender): String {
+            if (!cast.separateViewpointNarrators && current.isBlank()) return ""
+            val voice = current.takeIf { it in usable && it !in manualDialogue && it !in narratorVoices }
+                ?: voices.firstOrNull { gender(it) == wanted && it !in manualDialogue && it !in narratorVoices }
+                ?: return ""
+            narratorVoices.add(voice)
+            return voice
+        }
+        val female = viewpoint(cast.femaleNarratorVoice, Gender.FEMALE)
+        val male = viewpoint(cast.maleNarratorVoice, Gender.MALE)
+        val updated = cast.copy(
+            narratorVoice = narrator,
+            femaleNarratorVoice = female,
+            maleNarratorVoice = male,
+            mainVoice = cast.mainVoice.takeIf { it in usable && it !in narratorVoices }.orEmpty(),
+            maleVoice = cast.maleVoice.takeIf { it in usable && it !in narratorVoices }.orEmpty(),
+            femaleVoice = cast.femaleVoice.takeIf { it in usable && it !in narratorVoices }.orEmpty(),
+            characters = cast.characters.map { character ->
+                if (character.role == CastRole.CUSTOM && (character.voice !in usable || character.voice in narratorVoices))
+                    character.copy(role = CastRole.AUTO, voice = "")
+                else character
+            }
+        )
+        return assign(updated, voices, narrator, assignDeferred = true)
+    }
+
+    fun assign(cast: BookVoiceCast, installed: List<String>, narrator: String, assignDeferred: Boolean = false): Result {
         val voices = installed.filter(String::isNotBlank).distinct()
         // A catalog refresh can still be in flight during import. Missing catalog data
         // must not erase the voice choices already saved for this book.
@@ -110,12 +145,17 @@ object VoiceDelegation {
             when {
                 character.role == CastRole.NARRATOR -> character
                 // Reserve the finite pool for characters when they enter the story.
-                cast.exclusiveVoices && character.role == CastRole.AUTO -> character
+                !assignDeferred && cast.exclusiveVoices && character.role == CastRole.AUTO -> character
                 character.role == CastRole.CUSTOM && character.voice in usable &&
                     (!cast.exclusiveVoices || character.voice != activeNarrator && kept.add(character.voice)) -> character
                 else -> {
                     if (character.role == CastRole.CUSTOM && character.voice.isNotBlank() && character.voice !in usable) missing += character.voice
-                    val voice = take(want(character.pronoun)) ?: return@map if (cast.exclusiveVoices) character.copy(role = CastRole.AUTO, voice = "") else character
+                    val wanted = if (assignDeferred && character.pronoun == CharacterPronoun.AUTO) when (character.role) {
+                        CastRole.MALE -> Gender.MALE
+                        CastRole.FEMALE -> Gender.FEMALE
+                        else -> Gender.UNKNOWN
+                    } else want(character.pronoun)
+                    val voice = take(wanted) ?: return@map if (cast.exclusiveVoices) character.copy(role = CastRole.AUTO, voice = "") else character
                     assigned++
                     character.copy(role = CastRole.CUSTOM, voice = voice)
                 }

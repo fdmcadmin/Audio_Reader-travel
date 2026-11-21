@@ -59,19 +59,26 @@ internal class NativeSupertonic(private val context: Context) {
         const val LABEL = "Supertonic 3 • built into Roadleaf"
 
         fun options(context: Context): List<OfflineVoiceOption> = if (SupertonicModelInstall.installed(context)) {
-            SupertonicVoiceIndex.read(SupertonicModelInstall.folder(context)).mapIndexed { index, label ->
+            val legacy = SupertonicVoiceIndex.read(SupertonicModelInstall.folder(context)).mapIndexed { index, label ->
                 OfflineVoiceOption(SupertonicVoiceIndex.id(index, label), "en-US", 400, 100)
             }
+            val presets = SupertonicStep3Pack.read(context)?.presets.orEmpty().map {
+                OfflineVoiceOption(it.id, "en-US", 400, 100)
+            }
+            legacy.take(10) + presets + legacy.drop(10)
         } else emptyList()
     }
 
     private var tts: OfflineTts? = null
     private val voices by lazy { SupertonicVoiceIndex.read(SupertonicModelInstall.folder(context)) }
+    private val step3 by lazy { SupertonicStep3Pack.read(context) }
 
     private fun model(): OfflineTts {
         tts?.let { return it }
         val folder = SupertonicModelInstall.folder(context)
         fun path(name: String) = File(folder, name).absolutePath
+        val legacy = File(folder, "voice.bin")
+        val table = step3?.mergedTable(context, legacy, voices.size) ?: legacy
         val instance = OfflineTts(config = OfflineTtsConfig(
             model = OfflineTtsModelConfig(supertonic = OfflineTtsSupertonicModelConfig(
                 durationPredictor = path("duration_predictor.int8.onnx"),
@@ -80,11 +87,11 @@ internal class NativeSupertonic(private val context: Context) {
                 vocoder = path("vocoder.int8.onnx"),
                 ttsJson = path("tts.json"),
                 unicodeIndexer = path("unicode_indexer.bin"),
-                voiceStyle = path("voice.bin")
+                voiceStyle = table.absolutePath
             ), numThreads = 2, provider = "cpu"),
             maxNumSentences = 1
         ))
-        check(instance.numSpeakers() == voices.size) {
+        check(instance.numSpeakers() == voices.size + step3?.presets.orEmpty().size) {
             instance.free()
             "Supertonic did not load the complete voice table."
         }
@@ -95,13 +102,20 @@ internal class NativeSupertonic(private val context: Context) {
     suspend fun render(text: String, requested: String, fallback: String?, pitch: Float, outputFolder: File): File =
         withContext(Dispatchers.Default) {
             check(SupertonicModelInstall.installed(context)) { "Set up Supertonic 3 under Voice → Narrator before listening." }
-            val sid = SupertonicVoiceIndex.speaker(requested, voices) ?: fallback?.let { SupertonicVoiceIndex.speaker(it, voices) } ?: 0
-            val key = AudioCacheKey.create(ENGINE_ID, SupertonicVoiceIndex.id(sid, voices[sid]), 1f, text)
+            fun speaker(id: String): Int? {
+                val preset = step3?.presets?.indexOfFirst { it.id == id } ?: -1
+                return if (preset >= 0) voices.size + preset else SupertonicVoiceIndex.speaker(id, voices)
+            }
+            val sid = speaker(requested) ?: fallback?.let(::speaker) ?: 0
+            val preset = step3?.presets?.getOrNull(sid - voices.size)
+            val identity = if (preset != null) requireNotNull(step3).cacheIdentity(preset) else SupertonicVoiceIndex.id(sid, voices[sid])
+            val speed = preset?.speed ?: 1f
+            val key = AudioCacheKey.create(ENGINE_ID, identity, speed, text)
             val audio = File(outputFolder, "$key.wav")
             if (!audio.exists() || audio.length() <= 44) {
                 outputFolder.mkdirs()
                 val owner = currentCoroutineContext()
-                val generated = model().generateWithConfigAndCallback(text, GenerationConfig(sid = sid, speed = 1f,
+                val generated = model().generateWithConfigAndCallback(text, GenerationConfig(sid = sid, speed = speed,
                     extra = mapOf("lang" to "en"))) { if (owner.isActive) 1 else 0 }
                 owner.ensureActive()
                 check(generated.samples.isNotEmpty()) { "Supertonic returned no speech for this passage." }

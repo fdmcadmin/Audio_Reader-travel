@@ -42,6 +42,9 @@ import app.roadleaf.browser.WebBookOpening
 import app.roadleaf.importing.CharacterLorebook
 import kotlinx.coroutines.flow.MutableStateFlow
 
+private data class PendingCastImport(val book: String, val imported: CastFiles.Imported)
+private data class BuiltInCastPack(val engine: String, val label: String, val voices: List<String>)
+
 @UnstableApi
 class MainActivity : ComponentActivity() {
     private val pendingSearch = MutableStateFlow<String?>(null)
@@ -94,6 +97,7 @@ class MainActivity : ComponentActivity() {
         var showAllWebBooks by remember { mutableStateOf(false) }
         var lorebookBook by rememberSaveable { mutableStateOf<String?>(null) }
         var lorebookDraft by remember { mutableStateOf<BookVoiceCast?>(null) }
+        var castImport by remember { mutableStateOf<PendingCastImport?>(null) }
         var exportBook by rememberSaveable { mutableStateOf<String?>(null) }
         var exportDraft by remember { mutableStateOf<BookVoiceCast?>(null) }
         var showVoiceSources by remember { mutableStateOf(false) }
@@ -191,50 +195,8 @@ class MainActivity : ComponentActivity() {
                         output.toString("UTF-8")
                     } ?: error("Cannot read this file.")
                 }
-                val imported = CastFiles.read(source, lorebookDraft ?: vm.app.casts.get(book))
-                // Delegate installed voices from the selected speech engine and accent.
-                val catalog = voiceCatalog?.takeIf { settings.enginePackage.isBlank() || it.enginePackage == settings.enginePackage }
-                if (imported.engine == "com.brahmadeo.supertonic.tts")
-                    require(catalog?.enginePackage == imported.engine) { "Choose Supertonic in Voice, refresh installed voices, then import this lorebook to keep its attached voices." }
-                val installed = catalog?.voices?.filter { it.localeTag.equals(settings.localeTag, true) }?.map { it.name }.orEmpty()
-                if (imported.engine == HayaiVoices.ENGINE && imported.cast.usesViewpointNarrators) {
-                    val profile = imported.cast
-                    val configuredPiper = (profile.viewpointNarrators + listOf(profile.narratorVoice, profile.maleVoice, profile.femaleVoice) +
-                        profile.characters.filter { it.role == CastRole.CUSTOM }.map { it.voice }).filter {
-                        HayaiVoices.libriTts(it, HayaiVoices.ENGINE) != null
-                    }
-                    if (configuredPiper.isNotEmpty()) {
-                        require(catalog?.enginePackage == HayaiVoices.ENGINE && settings.localeTag.equals("en-US", true)) {
-                            "Save HayaiTTS and English (United States) under Voice, refresh voices, then import this Piper cast."
-                        }
-                        val unavailable = configuredPiper.toSet() - installed.toSet()
-                        require(unavailable.isEmpty()) {
-                            "HayaiTTS did not report ${unavailable.first()}. Install the matching Piper pack, refresh voices, then try again."
-                        }
-                    }
-                }
-                val delegated = VoiceDelegation.assign(imported.cast, installed, settings.voiceName.ifBlank { imported.cast.narratorVoice })
-                vm.app.casts.save(book, delegated.cast)
-                send(NarrationService.APPLY_CAST, Bundle().apply { putString("book", book) })
-                vm.message.value = buildString {
-                    append("Imported ${imported.characters} character${if (imported.characters == 1) "" else "s"} from a ${imported.kind.label}")
-                    if (imported.found > imported.characters) append(" (the first ${imported.characters} of ${imported.found})")
-                    append(". ")
-                    if (imported.kind in setOf(CastFiles.Kind.NOVELAI, CastFiles.Kind.LOREBOOK, CastFiles.Kind.CARD))
-                        append("Names, nicknames, pronoun hints and supported voice tags were kept, not the lorebook text. ")
-                    if (catalog == null || installed.isEmpty()) append("Tap Refresh installed voices, then import again to give each character a voice.")
-                    else {
-                        val ready = delegated.cast.characters.count { it.role == app.roadleaf.playback.CastRole.CUSTOM && it.voice in installed }
-                        append("$ready character${if (ready == 1) "" else "s"} using installed voices")
-                        if (delegated.cast.exclusiveVoices) append("; ${delegated.cast.characters.count { it.role != app.roadleaf.playback.CastRole.CUSTOM }} awaiting a distinct voice")
-                        if (delegated.shared.isNotEmpty()) append("; ${delegated.shared.size} share a voice, so more voices would help")
-                        append(". ")
-                        if (delegated.missing.isNotEmpty()) append("${delegated.missing.size} voice${if (delegated.missing.size == 1) "" else "s"} from the file aren't installed here and were replaced. ")
-                        if (delegated.unlabelled) append("This speech app doesn't label voices female or male, so check each character with Hear.")
-                    }
-                }.trim()
+                castImport = PendingCastImport(book, CastFiles.read(source, lorebookDraft ?: vm.app.casts.get(book)))
                 lorebookBook = null; lorebookDraft = null
-                if (catalog != null && delegated.needsMoreVoices) showVoiceSources = true
             }
         }
         val castExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -585,6 +547,42 @@ class MainActivity : ComponentActivity() {
             }
         }) { Text("Delete book") } }, dismissButton = { TextButton(onClick = { bookToDelete = null }) { Text("Keep book") } }) }
         if (showVoiceSources) VoiceSourcesDialog(voiceCatalog?.let { c -> c.engines.firstOrNull { it.packageName == c.enginePackage }?.label } ?: "your speech app", onEngineVoices = ::engineVoices, onOpen = ::openLink) { showVoiceSources = false }
+        castImport?.let { pending ->
+            val pack = remember(settings.enginePackage, settings.localeTag, supertonicInstalled) {
+                fun matching(voices: List<OfflineVoiceOption>) =
+                    voices.filter { it.localeTag.equals(settings.localeTag, true) }.map { it.name }
+                val supertonic = BuiltInCastPack(NativeSupertonic.ENGINE_ID, "Supertonic 3",
+                    runCatching { matching(NativeSupertonic.options(this@MainActivity)) }.getOrDefault(emptyList()))
+                val kokoro = BuiltInCastPack(NativeKokoro.ENGINE_ID, "Kokoro", matching(NativeKokoro.options(this@MainActivity)))
+                listOf(supertonic, kokoro).filter { it.voices.isNotEmpty() }
+                    .minByOrNull { if (it.engine == settings.enginePackage) 0 else 1 }
+            }
+            val language = java.util.Locale.forLanguageTag(settings.localeTag).displayName
+            fun save(usePack: BuiltInCastPack?) {
+                val result = usePack?.let { VoiceDelegation.assignBuiltIn(pending.imported.cast, it.voices, settings.voiceName) }
+                vm.app.casts.save(pending.book, (result?.cast ?: pending.imported.cast).validated())
+                if (usePack != null && usePack.engine != settings.enginePackage) {
+                    vm.saveSettings(settings.copy(enginePackage = usePack.engine, voiceName = "", localeTag = settings.localeTag))
+                    send(NarrationService.APPLY_SETTINGS)
+                    refreshVoices(usePack.engine)
+                } else send(NarrationService.APPLY_CAST, Bundle().apply { putString("book", pending.book) })
+                vm.message.value = if (result == null || usePack == null) "Cast imported with the file's voice choices."
+                    else "Cast imported. Roadleaf assigned ${result.assigned} voices from ${usePack.label}." +
+                        if (result.shared.isEmpty()) "" else " ${result.shared.size} characters share a voice."
+                castImport = null
+            }
+            AlertDialog(onDismissRequest = { castImport = null }, title = { Text("Auto-assign cast voices?") }, text = {
+                Column {
+                    Text(if (pack == null) "Set up a built-in pack for $language in Voice → Narrator to use automatic assignment."
+                        else "Assign voices to the imported cast from ${pack.label} for $language. Matching voice choices will be kept.")
+                    if (pack != null && pack.engine != settings.enginePackage)
+                        Text("Auto-assignment will also switch Roadleaf's speech engine to ${pack.label}.")
+                    TextButton(onClick = { save(null) }) { Text("Keep file voices") }
+                }
+            }, confirmButton = {
+                TextButton(onClick = { pack?.let(::save) }, enabled = pack != null) { Text("Auto-assign") }
+            }, dismissButton = { TextButton(onClick = { castImport = null }) { Text("Cancel") } })
+        }
         startChoice?.let { choice -> StartFromWordDialog(choice, onDismiss = { startChoice = null }) { at ->
             send(NarrationService.START_AT, Bundle().apply {
                 putInt("offset", at)

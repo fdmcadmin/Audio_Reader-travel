@@ -72,7 +72,7 @@ data class CastBookChoice(val id: String, val title: String, val chapterId: Stri
             OutlinedButton(onClick = { onImportLorebook(selectedBook, draft) }, enabled = selectedBook.isNotBlank() && !busy) { Text("Import cast or lorebook") }
             OutlinedButton(onClick = { onExport(selectedBook, draft) }, enabled = selectedBook.isNotBlank() && !busy) { Text("Export cast") }
         }
-        Text("Import a Roadleaf cast file, story voice profiles, a NovelAI lorebook or another lorebook or character card (JSON). Roadleaf keeps names, nicknames, pronoun hints and explicit Supertonic voice tags, never lorebook story text. Choose Supertonic first to keep tagged voices. Export saves this book's cast to a file you can import into any book.",
+        Text("Import a cast, voice profile, lorebook or character card (JSON). Choose whether to keep the file's voice picks or auto-assign from a built-in pack for your language. Export saves this book's cast for reuse.",
             style = MaterialTheme.typography.bodySmall)
         if (draft.profileSetId.isNotBlank()) TextButton(onClick = { draft = draft.copy(profileSetId = "", characters = draft.characters.map { it.copy(profileId = "") }) }) { Text("Unlink collection · keep voice choices") }
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {

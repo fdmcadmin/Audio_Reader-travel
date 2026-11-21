@@ -61,7 +61,7 @@ For testing on a phone, install **`app/build/outputs/apk/compact/app-compact.apk
 
 1. Import an EPUB or UTF-8 TXT you're allowed to use through Android's file picker, open a webpage with **Sources → Read webpage**, or add one with **Library → Add website book**.
 2. Open **Voice** → **Refresh voices**. Choose an installed speech engine, language/accent and offline voice, and adjust pitch and speed. Preview the narrator, then **Save & apply**.
-   - For the native Supertonic 3 pack, choose **Supertonic 3** → **Set up Supertonic 3**. After the one-time 129 MB download, its 170 English voices are available offline for narration and characters.
+   - For native Supertonic 3, choose **Supertonic 3** → **Set up Supertonic 3**. After the one-time 129 MB download, the original pack and Step 3 RVS presets are available offline for narration and characters.
 3. Tap **Listen** for an imported book, or **Continue reading** on a website quick pick.
    - Use lock-screen, notification, Bluetooth/headset controls or **Drive view** for larger controls.
    - Ordinary notifications keep narration moving with normal volume ducking. Calls and exclusive temporary focus pause it and resume when focus returns, unless you paused manually.
@@ -75,7 +75,7 @@ For testing on a phone, install **`app/build/outputs/apk/compact/app-compact.apk
    - Repeated viewpoint cues can identify a likely main character; uncertain speakers keep the narrator.
    - Frequent supporting characters can earn a spare installed matching voice. Automatic male/female voice families are currently Supertonic; with other engines, choose the defaults yourself.
    - Your main-character, name, voice and alias settings always win. **Narrator only** and **My assignments only** remain available, with a list of learned names and **Restart character learning**.
-   - **Import cast or lorebook** and **Export cast** set up or save a book's characters; see [docs/PERSONAL-STORY-CONTRACT.md](docs/PERSONAL-STORY-CONTRACT.md).
+   - **Import cast or lorebook** asks whether to keep the file's voice choices or assign voices from a built-in pack for the current language. **Export cast** saves a book's characters. See [docs/PERSONAL-STORY-CONTRACT.md](docs/PERSONAL-STORY-CONTRACT.md).
    - All learning and narration happen on the phone.
 
 Previews pause the current book and save its position. Voice, engine, accent, pitch, speed and device-usage settings survive restarts. Android Auto setup and its sideloading limits are described in [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md).
