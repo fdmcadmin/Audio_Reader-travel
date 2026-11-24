@@ -41,7 +41,7 @@ data class AdaptiveVoices(val engine: String = "", val narrator: String = "", va
             if (catalog.enginePackage == NativeKokoro.ENGINE_ID) return AdaptiveVoices(catalog.enginePackage, narrator,
                 voices.filter { NativeKokoro.speakerName(it)?.let { name -> name.startsWith("am_") || name.startsWith("bm_") } == true },
                 voices.filter { NativeKokoro.speakerName(it)?.let { name -> name.startsWith("af_") || name.startsWith("bf_") } == true })
-            if (catalog.enginePackage == NativeSupertonic.ENGINE_ID) return AdaptiveVoices(catalog.enginePackage, narrator,
+            if (catalog.enginePackage in setOf(RoadleafNativeSpeech.ENGINE_ID, NativeSupertonic.ENGINE_ID)) return AdaptiveVoices(catalog.enginePackage, narrator,
                 voices.filter { VoiceDelegation.gender(it) == VoiceDelegation.Gender.MALE },
                 voices.filter { VoiceDelegation.gender(it) == VoiceDelegation.Gender.FEMALE })
             if (catalog.enginePackage != "com.brahmadeo.supertonic.tts") return AdaptiveVoices(catalog.enginePackage, narrator)

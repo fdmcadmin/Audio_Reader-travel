@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.roadleaf.playback.*
 import java.util.Locale
@@ -106,6 +107,9 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
     var draft by remember(settings) { mutableStateOf(settings) }
     var previewText by remember { mutableStateOf("The road unfolds before us. A new chapter begins, with dragons beyond the horizon.") }
     var showModelTerms by remember { mutableStateOf(false) }
+    var editRecipe by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val roadleaf = draft.enginePackage == RoadleafNativeSpeech.ENGINE_ID
     val nativeSupertonic = draft.enginePackage == NativeSupertonic.ENGINE_ID
     val ready = when (draft.enginePackage) {
         NativeSupertonic.ENGINE_ID -> supertonicInstalled
@@ -120,11 +124,12 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
         Text("Choose from offline voices installed on this phone. Voice quality and accents depend on your speech engine.", style = MaterialTheme.typography.bodyMedium)
         val engines = buildList {
             add(Choice("", "Android default"))
+            add(Choice(RoadleafNativeSpeech.ENGINE_ID, RoadleafNativeSpeech.LABEL))
             addAll(catalog?.engines.orEmpty().map { Choice(it.packageName, it.label) })
             if (supertonicOffered) add(Choice(NativeSupertonic.ENGINE_ID, NativeSupertonic.LABEL))
         }.distinctBy { it.id }
         ChoicePicker("Speech engine", draft.enginePackage, engines, !busy && !supertonicBusy) { id ->
-            draft = draft.copy(enginePackage = id, voiceName = "", localeTag = if (id == NativeSupertonic.ENGINE_ID) "en-US" else draft.localeTag)
+            draft = draft.copy(enginePackage = id, voiceName = "", localeTag = if (id == NativeSupertonic.ENGINE_ID || id == RoadleafNativeSpeech.ENGINE_ID) "en-US" else draft.localeTag)
             if (id != NativeSupertonic.ENGINE_ID || !supertonicInstalled) onRefresh(id)
         }
         if (draft.enginePackage == NativeKokoro.ENGINE_ID) {
@@ -143,6 +148,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
             }
             TextButton(onClick = onSupertonicTerms) { Text("Supertonic 3 model terms") }
         }
+        if (roadleaf) Text("English formant speech generated on this device.", style = MaterialTheme.typography.bodySmall)
         val catalogMatches = catalog != null && (draft.enginePackage.isBlank() || catalog.enginePackage == draft.enginePackage)
         val voices = if (catalogMatches) catalog!!.voices else emptyList()
         val locales = (voices.map { it.localeTag } + draft.localeTag).distinct().sortedBy { Locale.forLanguageTag(it).displayName }
@@ -153,9 +159,10 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
         }
         if (catalogMatches) LibriTtsAvailability(voices, catalog!!.enginePackage, draft.localeTag)
         ChoicePicker("Voice", draft.voiceName, voiceChoices, !busy && catalogMatches && (!nativeSupertonic || ready)) { draft = draft.copy(voiceName = it) }
+        if (roadleaf) TextButton(onClick = { editRecipe = true }) { Text("Enter numeric voice") }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { onRefresh(draft.enginePackage) }, enabled = !busy && canControl && !supertonicBusy) { Text(if (busy) "Loading voices…" else "Refresh voices") }
-            if (draft.enginePackage != NativeKokoro.ENGINE_ID && !nativeSupertonic) TextButton(onClick = onAndroidSettings) { Text("Install / manage voices") }
+            if (draft.enginePackage != NativeKokoro.ENGINE_ID && !nativeSupertonic && !roadleaf) TextButton(onClick = onAndroidSettings) { Text("Install / manage voices") }
         }
         TextButton(onClick = onMoreVoices) { Text("Where to get more voices") }
         if (catalogMatches && voices.isEmpty() && !nativeSupertonic) Text(if (draft.enginePackage == NativeKokoro.ENGINE_ID) "Prepare the included Kokoro model above, then Refresh voices." else "No installed offline voices found. Install voice data in Android settings, then refresh.")
@@ -177,6 +184,27 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
         }
         Text("Preview pauses your book. Resume it from Library. For web reading, choose Read chapter again after changing the voice or pronunciations.", style = MaterialTheme.typography.bodySmall)
     }
+    if (editRecipe) {
+        var input by remember { mutableStateOf(draft.voiceName.removePrefix(RoadleafNativeSpeech.PREFIX).ifBlank { RoadleafNativeSpeech.EXAMPLE }) }
+        val entry = remember(input) { RoadleafNativeSpeech.parse(input) }
+        AlertDialog(onDismissRequest = { editRecipe = false }, title = { Text("Numeric Roadleaf voice") }, text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Start with F or M. Enter four numbered source slots, then emotion, presence and age. Source numbers run from 1 to 15. Use zero for unused slots.")
+                OutlinedTextField(input, { input = it.take(160) }, label = { Text("Voice ID or recipe") },
+                    supportingText = { Text(RoadleafNativeSpeech.EXAMPLE) }, isError = entry == null,
+                    modifier = Modifier.fillMaxWidth())
+            }
+        }, confirmButton = {
+            TextButton(enabled = entry != null, onClick = {
+                if (entry != null) {
+                    RoadleafNativeSpeech.rememberRecipes(context, listOf(entry.id))
+                    draft = draft.copy(voiceName = entry.id)
+                    editRecipe = false
+                    onRefresh(RoadleafNativeSpeech.ENGINE_ID)
+                }
+            }) { Text("Use voice") }
+        }, dismissButton = { TextButton(onClick = { editRecipe = false }) { Text("Cancel") } })
+    }
     if (showModelTerms) AlertDialog(
         onDismissRequest = { showModelTerms = false },
         title = { Text("Set up Supertonic 3") },
@@ -192,6 +220,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
 }
 
 internal fun voiceLabel(name: String, engine: String): String {
+    RoadleafNativeSpeech.label(name)?.let { return it }
     SupertonicStep3Pack.name(name)?.let { return "Roadleaf Step 3 · $it" }
     SupertonicVoiceIndex.label(name)?.let { return "Supertonic 3 · $it" }
     HayaiVoices.libriTts(name, engine)?.let { voice ->

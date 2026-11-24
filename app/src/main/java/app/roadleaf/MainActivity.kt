@@ -548,23 +548,36 @@ class MainActivity : ComponentActivity() {
         }) { Text("Delete book") } }, dismissButton = { TextButton(onClick = { bookToDelete = null }) { Text("Keep book") } }) }
         if (showVoiceSources) VoiceSourcesDialog(voiceCatalog?.let { c -> c.engines.firstOrNull { it.packageName == c.enginePackage }?.label } ?: "your speech app", onEngineVoices = ::engineVoices, onOpen = ::openLink) { showVoiceSources = false }
         castImport?.let { pending ->
-            val pack = remember(settings.enginePackage, settings.localeTag, supertonicInstalled) {
+            val pack = remember(pending, settings.enginePackage, settings.localeTag, supertonicInstalled) {
                 fun matching(voices: List<OfflineVoiceOption>) =
                     voices.filter { it.localeTag.equals(settings.localeTag, true) }.map { it.name }
+                val native = BuiltInCastPack(RoadleafNativeSpeech.ENGINE_ID, "Roadleaf Native",
+                    matching(RoadleafNativeSpeech.options(this@MainActivity)))
                 val supertonic = BuiltInCastPack(NativeSupertonic.ENGINE_ID, "Supertonic 3",
                     runCatching { matching(NativeSupertonic.options(this@MainActivity)) }.getOrDefault(emptyList()))
                 val kokoro = BuiltInCastPack(NativeKokoro.ENGINE_ID, "Kokoro", matching(NativeKokoro.options(this@MainActivity)))
-                listOf(supertonic, kokoro).filter { it.voices.isNotEmpty() }
-                    .minByOrNull { if (it.engine == settings.enginePackage) 0 else 1 }
+                val wantsNative = settings.enginePackage == native.engine || pending.imported.engine == native.engine
+                (if (wantsNative) listOf(native, supertonic, kokoro) else listOf(supertonic, kokoro))
+                    .filter { it.voices.isNotEmpty() }
+                    .minByOrNull { if (wantsNative && it.engine == native.engine || it.engine == settings.enginePackage) 0 else 1 }
             }
             val language = java.util.Locale.forLanguageTag(settings.localeTag).displayName
             fun save(usePack: BuiltInCastPack?) {
-                val result = usePack?.let { VoiceDelegation.assignBuiltIn(pending.imported.cast, it.voices, settings.voiceName) }
-                vm.app.casts.save(pending.book, (result?.cast ?: pending.imported.cast).validated())
-                if (usePack != null && usePack.engine != settings.enginePackage) {
-                    vm.saveSettings(settings.copy(enginePackage = usePack.engine, voiceName = "", localeTag = settings.localeTag))
+                val source = pending.imported.cast
+                val engine = usePack?.engine ?: pending.imported.engine.takeIf { it == RoadleafNativeSpeech.ENGINE_ID }
+                val codes = if (engine == RoadleafNativeSpeech.ENGINE_ID) {
+                    val saved = source.characters.map { it.voice } + source.viewpointNarrators +
+                        listOf(source.narratorVoice, source.mainVoice, source.maleVoice, source.femaleVoice)
+                    saved.filter { it.startsWith(RoadleafNativeSpeech.PREFIX) && RoadleafNativeSpeech.parse(it) != null }
+                } else emptyList()
+                if (codes.isNotEmpty()) RoadleafNativeSpeech.rememberRecipes(this@MainActivity, codes)
+                val result = usePack?.let { VoiceDelegation.assignBuiltIn(source, (it.voices + codes).distinct(), settings.voiceName) }
+                vm.app.casts.save(pending.book, (result?.cast ?: source).validated())
+                if (engine != null && engine != settings.enginePackage) {
+                    val locale = if (engine == RoadleafNativeSpeech.ENGINE_ID) "en-US" else settings.localeTag
+                    vm.saveSettings(settings.copy(enginePackage = engine, voiceName = "", localeTag = locale))
                     send(NarrationService.APPLY_SETTINGS)
-                    refreshVoices(usePack.engine)
+                    refreshVoices(engine)
                 } else send(NarrationService.APPLY_CAST, Bundle().apply { putString("book", pending.book) })
                 vm.message.value = if (result == null || usePack == null) "Cast imported with the file's voice choices."
                     else "Cast imported. Roadleaf assigned ${result.assigned} voices from ${usePack.label}." +
@@ -577,6 +590,8 @@ class MainActivity : ComponentActivity() {
                         else "Assign voices to the imported cast from ${pack.label} for $language. Matching voice choices will be kept.")
                     if (pack != null && pack.engine != settings.enginePackage)
                         Text("Auto-assignment will also switch Roadleaf's speech engine to ${pack.label}.")
+                    if (pending.imported.engine == RoadleafNativeSpeech.ENGINE_ID && settings.enginePackage != RoadleafNativeSpeech.ENGINE_ID)
+                        Text("Keeping this file’s voices selects Roadleaf Native.")
                     TextButton(onClick = { save(null) }) { Text("Keep file voices") }
                 }
             }, confirmButton = {

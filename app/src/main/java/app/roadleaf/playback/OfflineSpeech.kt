@@ -80,15 +80,19 @@ class OfflineSpeech(private val context: Context,
     }
     suspend fun catalog(requestedEngine: String): SpeechCatalog = mutex.withLock {
         val builtins = buildList {
+            add(SpeechEngineOption(RoadleafNativeSpeech.ENGINE_ID, RoadleafNativeSpeech.LABEL))
             add(SpeechEngineOption(NativeKokoro.ENGINE_ID, "Kokoro 82M • built into Roadleaf"))
             if (SupertonicModelInstall.packaged(context) || SupertonicModelInstall.installed(context)) {
                 add(SpeechEngineOption(NativeSupertonic.ENGINE_ID, NativeSupertonic.LABEL))
             }
         }
-        if (requestedEngine in setOf(NativeKokoro.ENGINE_ID, NativeSupertonic.ENGINE_ID)) {
+        if (requestedEngine in setOf(RoadleafNativeSpeech.ENGINE_ID, NativeKokoro.ENGINE_ID, NativeSupertonic.ENGINE_ID)) {
             val options = installedServices().map { SpeechEngineOption(it.serviceInfo.packageName, it.loadLabel(context.packageManager).toString()) }
-            val voices = if (requestedEngine == NativeSupertonic.ENGINE_ID) NativeSupertonic.options(context) + NativeVctk.options(context)
-                else NativeKokoro.options(context)
+            val voices = when (requestedEngine) {
+                RoadleafNativeSpeech.ENGINE_ID -> RoadleafNativeSpeech.options(context)
+                NativeSupertonic.ENGINE_ID -> NativeSupertonic.options(context) + NativeVctk.options(context)
+                else -> NativeKokoro.options(context)
+            }
             return@withLock SpeechCatalog((options + builtins).distinctBy { it.packageName }, voices, requestedEngine)
         }
         val tts = connect(requestedEngine)
@@ -103,6 +107,11 @@ class OfflineSpeech(private val context: Context,
     }
     suspend fun render(text: String, settings: ListeningSettings, fallbackVoice: String? = null): File = mutex.withLock {
         if (settings.enginePackage != NativeSupertonic.ENGINE_ID) nativeSupertonic.close()
+        if (settings.enginePackage == RoadleafNativeSpeech.ENGINE_ID) {
+            nativeKokoro.close()
+            nativeVctk.close()
+            return@withLock RoadleafNativeSpeech.render(context, text, settings.voiceName, fallbackVoice, settings.pitch, folder)
+        }
         if (settings.enginePackage == NativeSupertonic.ENGINE_ID) nativeKokoro.close()
         if (NativeVctk.speakerId(settings.voiceName) != null)
             return@withLock nativeVctk.render(text, settings.voiceName, settings.pitch, folder)
@@ -123,6 +132,7 @@ class OfflineSpeech(private val context: Context,
      * and its voice model are loaded before a story's first passage. True when the voice is ready.
      */
     suspend fun warmUp(settings: ListeningSettings): Boolean = mutex.withLock {
+        if (settings.enginePackage == RoadleafNativeSpeech.ENGINE_ID) return@withLock true
         if (settings.enginePackage == NativeSupertonic.ENGINE_ID)
             return@withLock SupertonicModelInstall.installed(context)
         if (settings.enginePackage == NativeKokoro.ENGINE_ID) {

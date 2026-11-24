@@ -1,0 +1,423 @@
+{
+  "format": "roadleaf-native-voices",
+  "version": 1,
+  "model": "roadleaf-formant-v1",
+  "voices": [
+    {
+      "id": "roadleaf-native:F01",
+      "family": "F",
+      "sources": [
+        "1",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F02",
+      "family": "F",
+      "sources": [
+        "2",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F03",
+      "family": "F",
+      "sources": [
+        "3",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F04",
+      "family": "F",
+      "sources": [
+        "4",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F05",
+      "family": "F",
+      "sources": [
+        "5",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F06",
+      "family": "F",
+      "sources": [
+        "6",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F07",
+      "family": "F",
+      "sources": [
+        "7",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F08",
+      "family": "F",
+      "sources": [
+        "8",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F09",
+      "family": "F",
+      "sources": [
+        "9",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F10",
+      "family": "F",
+      "sources": [
+        "10",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F11",
+      "family": "F",
+      "sources": [
+        "11",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F12",
+      "family": "F",
+      "sources": [
+        "12",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F13",
+      "family": "F",
+      "sources": [
+        "13",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F14",
+      "family": "F",
+      "sources": [
+        "14",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F15",
+      "family": "F",
+      "sources": [
+        "15",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M01",
+      "family": "M",
+      "sources": [
+        "1",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M02",
+      "family": "M",
+      "sources": [
+        "2",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M03",
+      "family": "M",
+      "sources": [
+        "3",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M04",
+      "family": "M",
+      "sources": [
+        "4",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M05",
+      "family": "M",
+      "sources": [
+        "5",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M06",
+      "family": "M",
+      "sources": [
+        "6",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M07",
+      "family": "M",
+      "sources": [
+        "7",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M08",
+      "family": "M",
+      "sources": [
+        "8",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M09",
+      "family": "M",
+      "sources": [
+        "9",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M10",
+      "family": "M",
+      "sources": [
+        "10",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M11",
+      "family": "M",
+      "sources": [
+        "11",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M12",
+      "family": "M",
+      "sources": [
+        "12",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M13",
+      "family": "M",
+      "sources": [
+        "13",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M14",
+      "family": "M",
+      "sources": [
+        "14",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:M15",
+      "family": "M",
+      "sources": [
+        "15",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 0,
+      "age": 0
+    },
+    {
+      "id": "roadleaf-native:F:[(1/1),10,0,0]|[0,5,4]",
+      "family": "F",
+      "sources": [
+        "1/1",
+        "10",
+        "0",
+        "0"
+      ],
+      "emotion": 0,
+      "presence": 5,
+      "age": 4
+    },
+    {
+      "id": "roadleaf-native:M:[(1/0),0,0,0]|[2,10,12]",
+      "family": "M",
+      "sources": [
+        "1/0",
+        "0",
+        "0",
+        "0"
+      ],
+      "emotion": 2,
+      "presence": 10,
+      "age": 12
+    }
+  ]
+}

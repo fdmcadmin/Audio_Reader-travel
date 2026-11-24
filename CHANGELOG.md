@@ -2,6 +2,11 @@
 
 All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
+## 0.3.45
+
+- Choose Roadleaf Native for offline English narration and character voices using Roadleaf's original experimental formant synthesizer. It is available immediately on installation.
+- Select a numbered voice, or enter a four-source recipe with independent emotion, presence and age values. The same saved voice can be assigned in the narrator and character pickers.
+
 ## 0.3.43
 
 - Use the direct Supertonic synthesis entry point to avoid a startup crash in optimized Android builds.

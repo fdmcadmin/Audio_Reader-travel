@@ -30,6 +30,13 @@ object VoiceDelegation {
 
     /** Gender only where the engine labels it in the voice ID; never guessed from how a name sounds. */
     fun gender(voice: String): Gender {
+        if (voice.startsWith(RoadleafNativeSpeech.PREFIX)) {
+            return when (RoadleafNativeSpeech.parse(voice)?.voice?.family) {
+                'F' -> Gender.FEMALE
+                'M' -> Gender.MALE
+                else -> Gender.UNKNOWN
+            }
+        }
         if (HayaiVoices.isEnglishKokoro(voice)) return HayaiVoices.gender(voice)
         (SupertonicVoiceIndex.label(voice) ?: SupertonicStep3Pack.name(voice))?.let {
             return if (it.startsWith('F')) Gender.FEMALE else Gender.MALE
