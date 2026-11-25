@@ -3,3 +3,4 @@ gradlew text eol=lf
 scripts/*.sh text eol=lf
 *.bat text eol=crlf
 *.jar binary
+voice-packs/*.tsv text eol=lf

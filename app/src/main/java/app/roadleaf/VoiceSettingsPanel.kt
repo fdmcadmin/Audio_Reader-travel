@@ -102,6 +102,10 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
     supertonicInstalled: Boolean = false,
     supertonicBusy: Boolean = false,
     onInstallSupertonic: () -> Unit = {},
+    weightedVoiceCount: Int = 0,
+    weightedVoiceRevision: String? = null,
+    onDownloadWeightedVoices: () -> Unit = {},
+    onImportWeightedVoices: () -> Unit = {},
     onSupertonicTerms: () -> Unit = {}
 ) {
     var draft by remember(settings) { mutableStateOf(settings) }
@@ -116,7 +120,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
         NativeKokoro.ENGINE_ID -> kokoroInstalled
         else -> true
     }
-    LaunchedEffect(nativeSupertonic, supertonicInstalled, canControl) {
+    LaunchedEffect(nativeSupertonic, supertonicInstalled, canControl, weightedVoiceRevision) {
         if (nativeSupertonic && supertonicInstalled && canControl) onRefresh(NativeSupertonic.ENGINE_ID)
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -147,6 +151,11 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
                 Text(if (supertonicBusy) "Downloading Supertonic 3…" else "Set up Supertonic 3")
             }
             TextButton(onClick = onSupertonicTerms) { Text("Supertonic 3 model terms") }
+            if (weightedVoiceCount > 0) Text("$weightedVoiceCount weighted voices installed.", style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = onDownloadWeightedVoices, enabled = !supertonicBusy, modifier = Modifier.fillMaxWidth()) {
+                Text(if (weightedVoiceCount == 0) "Download 30 weighted voices" else "Download official pack again")
+            }
+            TextButton(onClick = onImportWeightedVoices, enabled = !supertonicBusy) { Text("Import weighted voice pack") }
         }
         if (roadleaf) Text("English formant speech generated on this device.", style = MaterialTheme.typography.bodySmall)
         val catalogMatches = catalog != null && (draft.enginePackage.isBlank() || catalog.enginePackage == draft.enginePackage)
@@ -221,6 +230,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
 
 internal fun voiceLabel(name: String, engine: String): String {
     RoadleafNativeSpeech.label(name)?.let { return it }
+    SupertonicWeightedPack.label(name)?.let { return "Weighted · $it" }
     SupertonicStep3Pack.name(name)?.let { return "Roadleaf Step 3 · $it" }
     SupertonicVoiceIndex.label(name)?.let { return "Supertonic 3 · $it" }
     HayaiVoices.libriTts(name, engine)?.let { voice ->

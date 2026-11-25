@@ -63,20 +63,27 @@ internal class NativeSupertonic(private val context: Context) {
             val presets = SupertonicStep3Pack.read(context)?.presets.orEmpty().map {
                 OfflineVoiceOption(it.id, "en-US", 400, 100)
             }
-            legacy.take(10) + presets + legacy.drop(10)
+            val weighted = SupertonicWeightedPack.read(context)?.recipes.orEmpty().map {
+                OfflineVoiceOption(it.id, "en-US", 400, 100)
+            }
+            legacy.take(10) + weighted + presets + legacy.drop(10)
         } else emptyList()
     }
 
     private var tts: OfflineTts? = null
+    private var loadedPack: String? = null
     private val voices by lazy { SupertonicVoiceIndex.read(SupertonicModelInstall.folder(context)) }
     private val step3 by lazy { SupertonicStep3Pack.read(context) }
 
-    private fun model(): OfflineTts {
-        tts?.let { return it }
+    private fun model(pack: SupertonicWeightedPack?): OfflineTts {
+        if (loadedPack == pack?.digest) tts?.let { return it }
+        close()
         val folder = SupertonicModelInstall.folder(context)
         fun path(name: String) = File(folder, name).absolutePath
         val legacy = File(folder, "voice.bin")
-        val table = step3?.mergedTable(context, legacy, voices.size) ?: legacy
+        val baseline = step3?.mergedTable(context, legacy, voices.size) ?: legacy
+        val baselineCount = voices.size + step3?.presets.orEmpty().size
+        val table = pack?.appendTable(baseline, baselineCount, context.cacheDir) ?: baseline
         val instance = OfflineTts(config = OfflineTtsConfig(
             model = OfflineTtsModelConfig(supertonic = OfflineTtsSupertonicModelConfig(
                 durationPredictor = path("duration_predictor.int8.onnx"),
@@ -89,24 +96,34 @@ internal class NativeSupertonic(private val context: Context) {
             ), numThreads = 2, provider = "cpu"),
             maxNumSentences = 1
         ))
-        check(instance.numSpeakers() == voices.size + step3?.presets.orEmpty().size) {
+        check(instance.numSpeakers() == baselineCount + pack?.recipes.orEmpty().size) {
             instance.free()
             "Supertonic did not load the complete voice table."
         }
         tts = instance
+        loadedPack = pack?.digest
         return instance
     }
 
     suspend fun render(text: String, requested: String, fallback: String?, pitch: Float, outputFolder: File): File =
         withContext(Dispatchers.Default) {
             check(SupertonicModelInstall.installed(context)) { "Set up Supertonic 3 under Voice → Narrator before listening." }
+            val pack = SupertonicWeightedPack.read(context)
+            val weightedStart = voices.size + step3?.presets.orEmpty().size
             fun speaker(id: String): Int? {
+                val weighted = pack?.recipes?.indexOfFirst { it.id == id } ?: -1
+                if (weighted >= 0) return weightedStart + weighted
                 val preset = step3?.presets?.indexOfFirst { it.id == id } ?: -1
                 return if (preset >= 0) voices.size + preset else SupertonicVoiceIndex.speaker(id, voices)
             }
             val sid = speaker(requested) ?: fallback?.let(::speaker) ?: 0
             val preset = step3?.presets?.getOrNull(sid - voices.size)
-            val identity = if (preset != null) requireNotNull(step3).cacheIdentity(preset) else SupertonicVoiceIndex.id(sid, voices[sid])
+            val weighted = pack?.recipes?.getOrNull(sid - weightedStart)
+            val identity = when {
+                weighted != null -> "${weighted.id}:${requireNotNull(pack).digest}"
+                preset != null -> requireNotNull(step3).cacheIdentity(preset)
+                else -> SupertonicVoiceIndex.id(sid, voices[sid])
+            }
             val speed = preset?.speed ?: 1f
             val key = AudioCacheKey.create(ENGINE_ID, identity, speed, text)
             val audio = File(outputFolder, "$key.wav")
@@ -116,7 +133,7 @@ internal class NativeSupertonic(private val context: Context) {
                 owner.ensureActive()
                 // The JNI callback looks up a typed invoke method that R8 may replace with a generic bridge.
                 // Supertonic defaults to English and the direct call retains the chosen voice and rate.
-                val generated = model().generate(text, sid = sid, speed = speed)
+                val generated = model(pack).generate(text, sid = sid, speed = speed)
                 owner.ensureActive()
                 check(generated.samples.isNotEmpty()) { "Supertonic returned no speech for this passage." }
                 val partial = File(outputFolder, "$key.part")
@@ -129,5 +146,5 @@ internal class NativeSupertonic(private val context: Context) {
             WavePitch.adjust(audio, pitch)
         }
 
-    fun close() { tts?.free(); tts = null }
+    fun close() { tts?.free(); tts = null; loadedPack = null }
 }

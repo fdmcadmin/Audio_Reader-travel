@@ -9,6 +9,7 @@ import app.roadleaf.data.*
 import app.roadleaf.sources.*
 import app.roadleaf.playback.ListeningSettings
 import app.roadleaf.playback.SupertonicModelInstall
+import app.roadleaf.playback.SupertonicWeightedPack
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -28,6 +29,8 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val supertonicInstalled = supertonicReady.asStateFlow()
     private val supertonicDownloading = MutableStateFlow(false)
     val supertonicBusy = supertonicDownloading.asStateFlow()
+    private val weighted = MutableStateFlow(SupertonicWeightedPack.read(app))
+    internal val weightedPack = weighted.asStateFlow()
     init { viewModelScope.launch {
         // Bring the existing reader page into the new quick picks once, without fetching it.
         val prefs = app.getSharedPreferences("web-reader", 0)
@@ -52,6 +55,21 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
             throw cancelled
         } catch (error: Exception) {
             message.value = "Supertonic setup failed. " + (error.message ?: "Try the download again.")
+        } finally {
+            supertonicDownloading.value = false
+        }
+    }
+    fun installWeightedVoices(uri: Uri? = null) = viewModelScope.launch {
+        if (!supertonicDownloading.compareAndSet(false, true)) return@launch
+        message.value = if (uri == null) "Downloading weighted voices…" else "Importing weighted voices…"
+        try {
+            val pack = SupertonicWeightedPack.install(app, uri)
+            weighted.value = pack
+            message.value = "${pack.recipes.size} weighted voices installed."
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            message.value = "Voice pack setup failed. " + (error.message ?: "Try the download again.")
         } finally {
             supertonicDownloading.value = false
         }
