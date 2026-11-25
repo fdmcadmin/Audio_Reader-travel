@@ -82,9 +82,10 @@ class HayaiVoicesTest {
         mapped.validated()
     }
 
-    @Test fun castCanSaveOneHundredTwentyProfiles() {
-        BookVoiceCast(characters = (1..120).map { CastCharacter("Person $it", role = CastRole.AUTO) }).validated()
-        runCatching { BookVoiceCast(characters = (1..121).map { CastCharacter("Person $it") }).validated() }
-            .onSuccess { throw AssertionError("More than 120 profiles were accepted") }
+    @Test fun castCanSaveTheAsuBankAndOverflow() {
+        BookVoiceCast(characters = (1..162).map { CastCharacter("Person $it", role = CastRole.AUTO) }).validated()
+        val capacity = app.roadleaf.playback.AdaptiveCast.MAX_PEOPLE
+        runCatching { BookVoiceCast(characters = (1..capacity + 1).map { CastCharacter("Person $it") }).validated() }
+            .onSuccess { throw AssertionError("Cast exceeded its storage limit") }
     }
 }

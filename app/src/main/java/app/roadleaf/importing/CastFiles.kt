@@ -1,6 +1,7 @@
 package app.roadleaf.importing
 
 import app.roadleaf.playback.BookVoiceCast
+import app.roadleaf.playback.AdaptiveCast
 import app.roadleaf.playback.CastCharacter
 import app.roadleaf.playback.CastRole
 import app.roadleaf.playback.CharacterDelivery
@@ -59,7 +60,7 @@ object CastFiles {
                     .put("pronoun", it.pronoun.name).put("delivery", it.delivery.name).put("startsLower", it.startsLower).put("profileId", it.profileId))
             } })
             .put("learned", JSONArray().apply {
-                learned.people.filter { person -> person.voice.isNotBlank() && cast.characters.none { it.name.equals(person.name, true) } }.take(120)
+                learned.people.filter { person -> person.voice.isNotBlank() && cast.characters.none { it.name.equals(person.name, true) } }.take(AdaptiveCast.MAX_PEOPLE)
                     .forEach { put(JSONObject().put("name", it.name).put("voice", it.voice).put("gender", it.gender.name)) }
             })
             .toString(2)
@@ -72,7 +73,7 @@ object CastFiles {
     private fun readCast(root: JSONObject, existing: BookVoiceCast): Imported {
         require(root.optInt("version") == 1) { "This cast file comes from a newer Roadleaf. Update Roadleaf, then import it again." }
         val list = root.optJSONArray("characters") ?: JSONArray()
-        require(list.length() <= 256) { "This cast file has too many characters." }
+        require(list.length() <= AdaptiveCast.MAX_PEOPLE) { "This cast file has too many characters." }
         val characters = (0 until list.length()).mapNotNull { list.optJSONObject(it) }.mapNotNull { item ->
             val name = item.optString("name").trim().take(80).ifBlank { return@mapNotNull null }
             CastCharacter(name, item.optString("aliases").take(240), enumOr(item.optString("role"), CastRole.AUTO), item.optString("voice").take(160),
@@ -80,7 +81,7 @@ object CastFiles {
                 pronoun = enumOr(item.optString("pronoun"), CharacterPronoun.AUTO), profileId = item.optString("profileId").take(120))
         }
         val learnedList = root.optJSONArray("learned") ?: JSONArray()
-        val learned = (0 until minOf(learnedList.length(), 64)).mapNotNull { learnedList.optJSONObject(it) }.mapNotNull { item ->
+        val learned = (0 until minOf(learnedList.length(), AdaptiveCast.MAX_PEOPLE)).mapNotNull { learnedList.optJSONObject(it) }.mapNotNull { item ->
             val name = item.optString("name").trim().take(80).ifBlank { return@mapNotNull null }
             val pronoun = when (enumOr(item.optString("gender"), LearnedGender.UNKNOWN)) {
                 LearnedGender.FEMALE -> CharacterPronoun.SHE; LearnedGender.MALE -> CharacterPronoun.HE; else -> CharacterPronoun.AUTO
@@ -96,7 +97,7 @@ object CastFiles {
             value.keys().asSequence().take(64).associateWith { value.optString(it) }.filterValues { it.isNotBlank() && it.length <= 80 }
         }.orEmpty()
         val cast = BookVoiceCast(root.optBoolean("enabled", true), root.optString("mainCharacter").take(240), root.optString("mainVoice").take(160),
-            root.optString("maleVoice").take(160), root.optString("femaleVoice").take(160), (supplied + others).take(LorebookCast.MAX_CHARACTERS),
+            root.optString("maleVoice").take(160), root.optString("femaleVoice").take(160), (supplied + others).take(AdaptiveCast.MAX_PEOPLE),
             root.optBoolean("adaptive", true), root.optBoolean("followViewpoint", true),
             (existing.chapterViewpoints + viewpoints).entries.take(64).associate { it.key to it.value },
             enumOr(root.optString("mainPronoun"), CharacterPronoun.AUTO), narratorVoice = root.optString("narratorVoice").take(160),

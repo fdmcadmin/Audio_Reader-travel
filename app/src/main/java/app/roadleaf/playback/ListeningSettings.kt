@@ -39,7 +39,8 @@ class ListeningPreferences(context: Context) {
 }
 data class SpeechEngineOption(val packageName: String, val label: String)
 data class OfflineVoiceOption(val name: String, val localeTag: String, val quality: Int, val latency: Int)
-data class SpeechCatalog(val engines: List<SpeechEngineOption>, val voices: List<OfflineVoiceOption>, val enginePackage: String)
+data class SpeechCatalog(val engines: List<SpeechEngineOption>, val voices: List<OfflineVoiceOption>, val enginePackage: String,
+    val asuBank: AsuVoiceBank? = null)
 
 object AudioCacheKey {
     fun create(engine: String, voice: String, pitch: Float, text: String): String =

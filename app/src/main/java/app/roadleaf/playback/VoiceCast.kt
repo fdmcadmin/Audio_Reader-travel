@@ -20,7 +20,7 @@ data class BookVoiceCast(
     val viewpointNarrators get() = setOf(femaleNarratorVoice, maleNarratorVoice).filter(String::isNotBlank).toSet()
     val usesViewpointNarrators get() = enabled && separateViewpointNarrators && viewpointNarrators.isNotEmpty()
     fun validated(): BookVoiceCast {
-        require(mainCharacter.length <= 240 && characters.size <= 120) { "Keep the cast to 120 characters and short names/aliases." }
+        require(mainCharacter.length <= 240 && characters.size <= AdaptiveCast.MAX_PEOPLE) { "Keep the cast to ${AdaptiveCast.MAX_PEOPLE} characters and short names/aliases." }
         characters.forEach { require(it.name.isNotBlank() && it.name.length <= 80 && it.aliases.length <= 240) { "Enter a short character name and aliases." } }
         require(characters.map { it.name.trim().lowercase(Locale.ROOT) }.distinct().size == characters.size) { "Each character needs a unique name." }
         require(profileSetId.length <= 120 && characters.all { it.profileId.length <= 120 }) { "Keep profile identifiers short." }

@@ -16,7 +16,7 @@ data class LearnedCast(val windows: Int = 0, val main: String = "", val people: 
 
 /** These voice families are explicitly labelled by the installed engine, not inferred from character names. */
 data class AdaptiveVoices(val engine: String = "", val narrator: String = "", val male: List<String> = emptyList(), val female: List<String> = emptyList(),
-    val numberedPiper: List<String> = emptyList()) {
+    val numberedPiper: List<String> = emptyList(), val asu: AsuVoiceBank? = null) {
     val maleDefault get() = male.firstOrNull { it != narrator }.orEmpty()
     val femaleDefault get() = female.firstOrNull { it != narrator }.orEmpty()
     fun main(gender: LearnedGender): String {
@@ -33,6 +33,12 @@ data class AdaptiveVoices(val engine: String = "", val narrator: String = "", va
             }
                 .sortedWith(compareBy<OfflineVoiceOption> { it.latency }.thenByDescending { it.quality }.thenBy { it.name }).firstOrNull()?.name.orEmpty() }
             val voices = compatible.map { it.name }
+            if (catalog.enginePackage == RoadleafAsuSpeech.ENGINE_ID) {
+                val bank = checkNotNull(catalog.asuBank)
+                val starters = bank.starters
+                return AdaptiveVoices(catalog.enginePackage, settings.voiceName.ifBlank { RoadleafAsuSpeech.NARRATOR_F },
+                    starters.filter { AsuVoiceBank.family(it) == 'M' }, starters.filter { AsuVoiceBank.family(it) == 'F' }, asu = bank)
+            }
             if (catalog.enginePackage == HayaiVoices.ENGINE) return AdaptiveVoices(catalog.enginePackage, narrator,
                 voices.filter { HayaiVoices.gender(it) == VoiceDelegation.Gender.MALE }.sorted(),
                 voices.filter { HayaiVoices.gender(it) == VoiceDelegation.Gender.FEMALE }.sorted(),
@@ -54,7 +60,7 @@ data class AdaptiveVoices(val engine: String = "", val narrator: String = "", va
 
 /** Pure, bounded learning. Render using prior evidence; commit next only when the source span is queued. */
 object AdaptiveCast {
-    const val MAX_PEOPLE = 120
+    const val MAX_PEOPLE = 384
     const val MAX_SEEN = 256
     private val povVerbs = "thought|wondered|realized|realised|decided|remembered|noticed|felt"
     private val viewpointVerbs = povVerbs.split('|').toSet()
@@ -65,7 +71,8 @@ object AdaptiveCast {
     private val stop = setOf("he", "she", "they", "it", "we", "you", "the", "a", "an", "this", "that", "there", "then", "but", "and", "yes", "no", "someone", "everyone", "nobody", "chapter", "narrator")
     private val title = Regex("^(?:Captain|Lord|Lady|Sir|Miss|Mister|Doctor|Professor|Prince|Princess|King|Queen)\\s+")
     data class Plan(val cast: BookVoiceCast, val next: LearnedCast)
-    private fun id(value: String) = value.trim().lowercase(Locale.ROOT)
+    internal fun nameKey(value: String) = value.trim().lowercase(Locale.ROOT)
+    private fun id(value: String) = nameKey(value)
     fun stamp(chapter: String, offset: Int, text: String): String = MessageDigest.getInstance("SHA-256")
         .digest("$chapter\u0000$offset\u0000$text".toByteArray()).take(16).joinToString("") { "%02x".format(it) }
 
@@ -76,6 +83,7 @@ object AdaptiveCast {
             val next = if (profile.usesViewpointNarrators) observe(prior, profile, chapter, offset, text, context) else prior
             return Plan(profile.copy(storyVoice = ChapterPerspectives.voice(profile, next, chapter)), next)
         }
+        voices.asu?.let { return prepareAsu(profile, prior, voices, it, chapter, offset, text, context, explicitSpeakers) }
         val narratorPicks = profile.viewpointNarrators
         val piperModel = (narratorPicks + listOf(profile.narratorVoice, profile.maleVoice, profile.femaleVoice))
             .firstOrNull { HayaiVoices.libriTts(it, voices.engine)?.number != null }?.substringBefore('#')
@@ -180,6 +188,47 @@ object AdaptiveCast {
                 })
         val viewpointEvidence = if (profile.usesViewpointNarrators) next else prior
         return Plan(if (prior.windows == 0) active else active.copy(storyVoice = ChapterPerspectives.voice(active, viewpointEvidence, chapter)), next)
+    }
+
+    private fun prepareAsu(profile: BookVoiceCast, prior: LearnedCast, voices: AdaptiveVoices, bank: AsuVoiceBank, chapter: String,
+        offset: Int, text: String, context: DialogueState, explicitSpeakers: List<String>): Plan {
+        val narrator = profile.narratorVoice.takeIf(bank::accepts) ?: voices.narrator.takeIf(bank::accepts) ?: RoadleafAsuSpeech.NARRATOR_F
+        val observed = observe(prior, profile, chapter, offset, text, context, explicitSpeakers.filterNot { id(it) == "narrator" })
+        val configured = profile.characters.associateBy { id(it.name) }
+        val mainName = id(profile.mainCharacter.substringBefore(','))
+        val fixed = (profile.viewpointNarrators + listOf(narrator, profile.mainVoice, profile.femaleVoice, profile.maleVoice) +
+            profile.characters.filter { it.role == CastRole.CUSTOM }.map { it.voice }).filter(bank::accepts).toSet()
+        val retained = observed.people.filter { it.engine == voices.engine && bank.isCharacterVoice(it.voice) && it.voice !in fixed }
+        val used = (fixed + retained.map { it.voice }).toMutableSet()
+        val validPrior = retained.distinctBy { it.voice }.associateBy { id(it.name) }
+        val people = observed.people.map { person ->
+            if (person.turns == 0) return@map person
+            val key = id(person.name)
+            val member = configured[key]
+            if (key == mainName && bank.isCharacterVoice(profile.mainVoice) || member != null && member.role != CastRole.AUTO) return@map person
+            if (key in validPrior) return@map person
+            val wanted = (if (key == mainName) AsuVoiceBank.family(profile.mainPronoun) else null)
+                ?: member?.let { AsuVoiceBank.family(it.pronoun) }
+                ?: when {
+                    person.femaleCues > 0 && person.maleCues == 0 -> 'F'
+                    person.maleCues > 0 && person.femaleCues == 0 -> 'M'
+                    else -> null
+                }
+            val voice = bank.next(wanted, used)
+            used += voice
+            person.copy(voice = voice, engine = voices.engine)
+        }
+        val next = observed.copy(people = people)
+        val assigned = people.filter { it.engine == voices.engine && bank.isCharacterVoice(it.voice) && it.voice !in fixed }.associateBy { id(it.name) }
+        val characters = profile.characters.map { character ->
+            val binding = assigned[id(character.name)]
+            if (character.role == CastRole.AUTO && binding != null) character.copy(role = CastRole.CUSTOM, voice = binding.voice) else character
+        } + assigned.filterKeys { it !in configured && it != mainName }.values.map {
+            CastCharacter(it.name, role = CastRole.CUSTOM, voice = it.voice)
+        }
+        val active = profile.copy(narratorVoice = narrator, mainVoice = profile.mainVoice.takeIf(bank::isCharacterVoice)
+            ?: assigned[mainName]?.voice.orEmpty(), characters = characters)
+        return Plan(active.copy(storyVoice = ChapterPerspectives.voice(active, next, chapter)), next)
     }
 
     private fun observe(prior: LearnedCast, profile: BookVoiceCast, chapter: String, offset: Int, text: String,

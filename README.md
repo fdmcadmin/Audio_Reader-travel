@@ -8,7 +8,7 @@ Repository: https://github.com/fdmcadmin/Audio_Reader-travel
 
 ## What Roadleaf is
 
-Roadleaf is a simple reader. It reads text that already exists aloud: books you import, story pages you open, your own NovelAI stories. It uses the offline voices installed on your phone. It does not generate, sell or distribute stories, and it includes no voices of its own.
+Roadleaf is a simple reader. It reads text that already exists aloud: books you import, story pages you open, your own NovelAI stories. It can use the offline voices installed on your phone or the optional ASU-derived cast bank through a PC companion. It does not generate, sell or distribute stories.
 
 What Roadleaf adds is the reading itself: a narrator that adapts to each book and stays consistent.
 - Characters keep their voices.
@@ -31,6 +31,7 @@ The aim is that long listening sessions feel like someone reading to you, not li
 - **Cast files and voices:**
   - import a Roadleaf cast, a NovelAI lorebook, or another lorebook or character card to set up a book's characters. Roadleaf keeps only their names, nicknames and pronoun hints, and gives each character an installed voice;
   - export a book's cast to reuse it in another book;
+  - choose the optional [161-profile ASU cast bank](docs/ASU-CAST-VOICES.md) for distinct character voices through a PC companion;
   - **Voice → Where to get more voices** lists speech apps that add offline voices.
 - **Start where you want:** **Resume** (which continues unsaved stories once more text is written), **From top** and a chapter queue. Starting at a chosen word is held back for now while it is fixed.
 - **Made for the road:**
@@ -47,7 +48,7 @@ See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
 Test builds are attached to this repository's [Releases](https://github.com/fdmcadmin/Audio_Reader-travel/releases). They are development-signed test builds (application ID ending in `.debug`), not a production release. Download the APK from a release's **Assets**, open it on your phone and choose **Install** or **Update**. A build signed with the same key updates an existing install in place and keeps its library.
 
-Then install an offline voice: **Voice → Refresh voices**, choose a speech engine, language and voice, and use **Install / manage voices** for more voice data. Voices come from the speech engines installed on your phone; Roadleaf does not clone voices or bundle voice models.
+Then install an offline voice: **Voice → Refresh voices**, choose a speech engine, language and voice, and use **Install / manage voices** for more voice data. For the optional ASU bank, follow the [PC companion setup](docs/ASU-CAST-VOICES.md).
 
 ## Build
 

@@ -30,6 +30,7 @@ object VoiceDelegation {
 
     /** Gender only where the engine labels it in the voice ID; never guessed from how a name sounds. */
     fun gender(voice: String): Gender {
+        AsuVoiceBank.family(voice)?.let { return if (it == 'F') Gender.FEMALE else Gender.MALE }
         if (voice.startsWith(RoadleafNativeSpeech.PREFIX)) {
             return when (RoadleafNativeSpeech.parse(voice)?.voice?.family) {
                 'F' -> Gender.FEMALE

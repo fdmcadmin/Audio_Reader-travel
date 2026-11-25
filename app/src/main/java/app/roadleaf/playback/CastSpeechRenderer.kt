@@ -20,7 +20,11 @@ class CastSpeechRenderer(private val speech: OfflineSpeech, private val cache: F
             val spoken = if (settings.localeTag.startsWith("en", true)) NarrationText.english(replaced) else replaced
             // Match Supertonic's bounded English batches before entering its own splitter.
             val supertonic = settings.enginePackage in setOf("com.brahmadeo.supertonic.tts", NativeSupertonic.ENGINE_ID)
-            val limit = if (supertonic) 300 else 550
+            val limit = when {
+                settings.enginePackage == RoadleafAsuSpeech.ENGINE_ID -> RoadleafAsuSpeech.MAX_SPAN
+                supertonic -> 300
+                else -> 550
+            }
             val prepared = if (supertonic) SpeechUtterances.singleParagraph(spoken) else spoken
             val voice = settings.copy(voiceName = utterance.voice.ifBlank { settings.voiceName },
                 pitch = (settings.pitch * utterance.pitchScale).coerceIn(0.7f, 1.3f))

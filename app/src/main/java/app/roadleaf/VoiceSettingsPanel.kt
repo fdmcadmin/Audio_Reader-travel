@@ -110,6 +110,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
     var editRecipe by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val roadleaf = draft.enginePackage == RoadleafNativeSpeech.ENGINE_ID
+    val asu = draft.enginePackage == RoadleafAsuSpeech.ENGINE_ID
     val nativeSupertonic = draft.enginePackage == NativeSupertonic.ENGINE_ID
     val ready = when (draft.enginePackage) {
         NativeSupertonic.ENGINE_ID -> supertonicInstalled
@@ -125,11 +126,12 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
         val engines = buildList {
             add(Choice("", "Android default"))
             add(Choice(RoadleafNativeSpeech.ENGINE_ID, RoadleafNativeSpeech.LABEL))
+            add(Choice(RoadleafAsuSpeech.ENGINE_ID, RoadleafAsuSpeech.LABEL))
             addAll(catalog?.engines.orEmpty().map { Choice(it.packageName, it.label) })
             if (supertonicOffered) add(Choice(NativeSupertonic.ENGINE_ID, NativeSupertonic.LABEL))
         }.distinctBy { it.id }
         ChoicePicker("Speech engine", draft.enginePackage, engines, !busy && !supertonicBusy) { id ->
-            draft = draft.copy(enginePackage = id, voiceName = "", localeTag = if (id == NativeSupertonic.ENGINE_ID || id == RoadleafNativeSpeech.ENGINE_ID) "en-US" else draft.localeTag)
+            draft = draft.copy(enginePackage = id, voiceName = "", localeTag = if (id in setOf(NativeSupertonic.ENGINE_ID, RoadleafNativeSpeech.ENGINE_ID, RoadleafAsuSpeech.ENGINE_ID)) "en-US" else draft.localeTag)
             if (id != NativeSupertonic.ENGINE_ID || !supertonicInstalled) onRefresh(id)
         }
         if (draft.enginePackage == NativeKokoro.ENGINE_ID) {
@@ -149,6 +151,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
             TextButton(onClick = onSupertonicTerms) { Text("Supertonic 3 model terms") }
         }
         if (roadleaf) Text("English formant speech generated on this device.", style = MaterialTheme.typography.bodySmall)
+        if (asu) Text("Uses the 161-profile bank and generates speech on your connected PC.", style = MaterialTheme.typography.bodySmall)
         val catalogMatches = catalog != null && (draft.enginePackage.isBlank() || catalog.enginePackage == draft.enginePackage)
         val voices = if (catalogMatches) catalog!!.voices else emptyList()
         val locales = (voices.map { it.localeTag } + draft.localeTag).distinct().sortedBy { Locale.forLanguageTag(it).displayName }
@@ -162,7 +165,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
         if (roadleaf) TextButton(onClick = { editRecipe = true }) { Text("Enter numeric voice") }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { onRefresh(draft.enginePackage) }, enabled = !busy && canControl && !supertonicBusy) { Text(if (busy) "Loading voices…" else "Refresh voices") }
-            if (draft.enginePackage != NativeKokoro.ENGINE_ID && !nativeSupertonic && !roadleaf) TextButton(onClick = onAndroidSettings) { Text("Install / manage voices") }
+            if (draft.enginePackage != NativeKokoro.ENGINE_ID && !nativeSupertonic && !roadleaf && !asu) TextButton(onClick = onAndroidSettings) { Text("Install / manage voices") }
         }
         TextButton(onClick = onMoreVoices) { Text("Where to get more voices") }
         if (catalogMatches && voices.isEmpty() && !nativeSupertonic) Text(if (draft.enginePackage == NativeKokoro.ENGINE_ID) "Prepare the included Kokoro model above, then Refresh voices." else "No installed offline voices found. Install voice data in Android settings, then refresh.")
@@ -221,6 +224,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
 
 internal fun voiceLabel(name: String, engine: String): String {
     RoadleafNativeSpeech.label(name)?.let { return it }
+    RoadleafAsuSpeech.label(name)?.let { return it }
     SupertonicStep3Pack.name(name)?.let { return "Roadleaf Step 3 · $it" }
     SupertonicVoiceIndex.label(name)?.let { return "Supertonic 3 · $it" }
     HayaiVoices.libriTts(name, engine)?.let { voice ->

@@ -1,0 +1,3475 @@
+{
+  "format": "roadleaf-asu-pair-bank-v2",
+  "renderer": "Qwen3-TTS-12Hz-0.6B-Base",
+  "revision": "5d83992436eae1d760afd27aff78a71d676296fc",
+  "status": "candidate",
+  "total_singles": 17,
+  "total_pairs": 144,
+  "eligible_slots": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "count_by_primary": {
+    "M": {
+      "solos": 8,
+      "pairs": 72,
+      "total": 80
+    },
+    "F": {
+      "solos": 9,
+      "pairs": 72,
+      "total": 81
+    }
+  },
+  "stock": [
+    {
+      "id": "o-leo",
+      "kind": "single",
+      "baseline_notation": "(O-LEO/0)",
+      "model": "orpheus-3b",
+      "speaker": "leo",
+      "family": "M",
+      "pcm_reference": "voyager-base-run\\wav\\M01.wav",
+      "sha256": "d5cc9b3607f3e0a5dfb7915924fabcea8b976c06261f0a8de5e6c61e8263feba"
+    },
+    {
+      "id": "o-dan",
+      "kind": "single",
+      "baseline_notation": "(O-DAN/0)",
+      "model": "orpheus-3b",
+      "speaker": "dan",
+      "family": "M",
+      "pcm_reference": "voyager-base-run\\wav\\M02.wav",
+      "sha256": "fec52fc7a2053b23312736673337c8fb934d8d00f0116e47539735f113dbac35"
+    },
+    {
+      "id": "o-zac",
+      "kind": "single",
+      "baseline_notation": "(O-ZAC/0)",
+      "model": "orpheus-3b",
+      "speaker": "zac",
+      "family": "M",
+      "pcm_reference": "voyager-base-run\\wav\\M03.wav",
+      "sha256": "9e3239baeeec2b74888637a6485360d6870f67b76a84cde1404b4b65cb97b9b2"
+    },
+    {
+      "id": "o-tara",
+      "kind": "single",
+      "baseline_notation": "(O-TARA/0)",
+      "model": "orpheus-3b",
+      "speaker": "tara",
+      "family": "F",
+      "pcm_reference": "voyager-base-run\\wav\\F01.wav",
+      "sha256": "f22731dc83b2d7604e86cbc1b8d3e0d155f56102a5567b9a47acadaacc52a29f"
+    },
+    {
+      "id": "o-leah",
+      "kind": "single",
+      "baseline_notation": "(O-LEAH/0)",
+      "model": "orpheus-3b",
+      "speaker": "leah",
+      "family": "F",
+      "pcm_reference": "voyager-base-run\\wav\\F02.wav",
+      "sha256": "01a3defc6e4f4c4ef41fa8002ab19c71ee169cb187a0bcabf9cc4a13464d874b"
+    },
+    {
+      "id": "o-jess",
+      "kind": "single",
+      "baseline_notation": "(O-JESS/0)",
+      "model": "orpheus-3b",
+      "speaker": "jess",
+      "family": "F",
+      "pcm_reference": "voyager-base-run\\wav\\F03.wav",
+      "sha256": "f9fcb2b46dc2b2764ddc28aee1cc66d5f4bb4da44a0c17fb7b38452a09ea6d38"
+    },
+    {
+      "id": "o-mia",
+      "kind": "single",
+      "baseline_notation": "(O-MIA/0)",
+      "model": "orpheus-3b",
+      "speaker": "mia",
+      "family": "F",
+      "pcm_reference": "voyager-base-run\\wav\\F04.wav",
+      "sha256": "0002fb372d3d83a3196ef25e8e6321237354b4536aeb15429ca3c43fefc5d800"
+    },
+    {
+      "id": "o-zoe",
+      "kind": "single",
+      "baseline_notation": "(O-ZOE/0)",
+      "model": "orpheus-3b",
+      "speaker": "zoe",
+      "family": "F",
+      "pcm_reference": "voyager-base-run\\wav\\F05.wav",
+      "sha256": "d447ece685cbda50ff7c9f826ea4ba413e8fb3be90b5aca7e9054d6c72b1cff2"
+    },
+    {
+      "id": "q-ryan",
+      "kind": "single",
+      "baseline_notation": "(Q-RYAN/0)",
+      "model": "qwen3-tts-customvoice-1p7b",
+      "speaker": "ryan",
+      "family": "M",
+      "pcm_reference": "voyager-base-run\\wav\\M04.wav",
+      "sha256": "899022ec12f8e9f853f829eeb69458fd8bdb52589fcb6d930de6951f8982de8e"
+    },
+    {
+      "id": "q-aiden",
+      "kind": "single",
+      "baseline_notation": "(Q-AIDEN/0)",
+      "model": "qwen3-tts-customvoice-1p7b",
+      "speaker": "aiden",
+      "family": "M",
+      "pcm_reference": "voyager-base-run\\wav\\M05.wav",
+      "sha256": "a2ddc5effd27f636698aa3eae977c4e88cd97e97cebb81c9a3247511717fd0c0"
+    },
+    {
+      "id": "q-dylan",
+      "kind": "single",
+      "baseline_notation": "(Q-DYLAN/0)",
+      "model": "qwen3-tts-customvoice-1p7b",
+      "speaker": "dylan",
+      "family": "M",
+      "pcm_reference": "voyager-base-run\\wav\\M06.wav",
+      "sha256": "9a17c420b531a967478686d18b5a505b5aad4a27ed733ba15d3bf9d1ab14ea54"
+    },
+    {
+      "id": "q-eric",
+      "kind": "single",
+      "baseline_notation": "(Q-ERIC/0)",
+      "model": "qwen3-tts-customvoice-1p7b",
+      "speaker": "eric",
+      "family": "M",
+      "pcm_reference": "voyager-base-run\\wav\\M07.wav",
+      "sha256": "359171e5eb0164ae044d166b12e8c05cab48590a51ca3e4ed635cc6e09a1c0de"
+    },
+    {
+      "id": "q-uncle_fu",
+      "kind": "single",
+      "baseline_notation": "(Q-UNCLE_FU/0)",
+      "model": "qwen3-tts-customvoice-1p7b",
+      "speaker": "uncle_fu",
+      "family": "M",
+      "pcm_reference": "voyager-base-run\\wav\\M08.wav",
+      "sha256": "187da631a0ac56a1c985db6a5deeada521454bfa66b0d85deff2b8999f20a522"
+    },
+    {
+      "id": "q-vivian",
+      "kind": "single",
+      "baseline_notation": "(Q-VIVIAN/0)",
+      "model": "qwen3-tts-customvoice-1p7b",
+      "speaker": "vivian",
+      "family": "F",
+      "pcm_reference": "voyager-base-run\\wav\\F06.wav",
+      "sha256": "d039b33ed8b6e3c338f1976755e4fd0fdb70c57be87889638fa63e6842939383"
+    },
+    {
+      "id": "q-serena",
+      "kind": "single",
+      "baseline_notation": "(Q-SERENA/0)",
+      "model": "qwen3-tts-customvoice-1p7b",
+      "speaker": "serena",
+      "family": "F",
+      "pcm_reference": "voyager-base-run\\wav\\F07.wav",
+      "sha256": "c356f42bf2b9917d1bc143ebaa765d777568b41c5465dd03b0b6549d8b2bc236"
+    },
+    {
+      "id": "q-ono_anna",
+      "kind": "single",
+      "baseline_notation": "(Q-ONO_ANNA/0)",
+      "model": "qwen3-tts-customvoice-1p7b",
+      "speaker": "ono_anna",
+      "family": "F",
+      "pcm_reference": "voyager-base-run\\wav\\F08.wav",
+      "sha256": "06428e1f5ba408122c1ea300c41220111f4e3abd7b1bc1913be2b1faf81d38c7"
+    },
+    {
+      "id": "q-sohee",
+      "kind": "single",
+      "baseline_notation": "(Q-SOHEE/0)",
+      "model": "qwen3-tts-customvoice-1p7b",
+      "speaker": "sohee",
+      "family": "F",
+      "pcm_reference": "voyager-base-run\\wav\\F09.wav",
+      "sha256": "e3090d8c9e15f11c48ca41ffaa3a286ca53c12a2d48796641aa954822d55fc4d"
+    }
+  ],
+  "pairs": [
+    {
+      "id": "pair-o-dan--o-jess",
+      "kind": "pair",
+      "baseline_notation": "(O-DAN/o-jess)",
+      "primary": "o-dan",
+      "partner": "o-jess",
+      "members": [
+        "o-dan",
+        "o-jess"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.67,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-dan--o-leah",
+      "kind": "pair",
+      "baseline_notation": "(O-DAN/o-leah)",
+      "primary": "o-dan",
+      "partner": "o-leah",
+      "members": [
+        "o-dan",
+        "o-leah"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.33,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-dan--o-mia",
+      "kind": "pair",
+      "baseline_notation": "(O-DAN/o-mia)",
+      "primary": "o-dan",
+      "partner": "o-mia",
+      "members": [
+        "o-dan",
+        "o-mia"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.86,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-dan--o-tara",
+      "kind": "pair",
+      "baseline_notation": "(O-DAN/o-tara)",
+      "primary": "o-dan",
+      "partner": "o-tara",
+      "members": [
+        "o-dan",
+        "o-tara"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.86,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-dan--o-zoe",
+      "kind": "pair",
+      "baseline_notation": "(O-DAN/o-zoe)",
+      "primary": "o-dan",
+      "partner": "o-zoe",
+      "members": [
+        "o-dan",
+        "o-zoe"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.47,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-dan--q-ono_anna",
+      "kind": "pair",
+      "baseline_notation": "(O-DAN/q-ono_anna)",
+      "primary": "o-dan",
+      "partner": "q-ono_anna",
+      "members": [
+        "o-dan",
+        "q-ono_anna"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.93,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-dan--q-serena",
+      "kind": "pair",
+      "baseline_notation": "(O-DAN/q-serena)",
+      "primary": "o-dan",
+      "partner": "q-serena",
+      "members": [
+        "o-dan",
+        "q-serena"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.11,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-dan--q-sohee",
+      "kind": "pair",
+      "baseline_notation": "(O-DAN/q-sohee)",
+      "primary": "o-dan",
+      "partner": "q-sohee",
+      "members": [
+        "o-dan",
+        "q-sohee"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.4,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-dan--q-vivian",
+      "kind": "pair",
+      "baseline_notation": "(O-DAN/q-vivian)",
+      "primary": "o-dan",
+      "partner": "q-vivian",
+      "members": [
+        "o-dan",
+        "q-vivian"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 5.58,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-jess--o-dan",
+      "kind": "pair",
+      "baseline_notation": "(O-JESS/o-dan)",
+      "primary": "o-jess",
+      "partner": "o-dan",
+      "members": [
+        "o-jess",
+        "o-dan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.67,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-jess--o-leo",
+      "kind": "pair",
+      "baseline_notation": "(O-JESS/o-leo)",
+      "primary": "o-jess",
+      "partner": "o-leo",
+      "members": [
+        "o-jess",
+        "o-leo"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.96,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-jess--o-zac",
+      "kind": "pair",
+      "baseline_notation": "(O-JESS/o-zac)",
+      "primary": "o-jess",
+      "partner": "o-zac",
+      "members": [
+        "o-jess",
+        "o-zac"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.29,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-jess--q-aiden",
+      "kind": "pair",
+      "baseline_notation": "(O-JESS/q-aiden)",
+      "primary": "o-jess",
+      "partner": "q-aiden",
+      "members": [
+        "o-jess",
+        "q-aiden"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 3.98,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-jess--q-dylan",
+      "kind": "pair",
+      "baseline_notation": "(O-JESS/q-dylan)",
+      "primary": "o-jess",
+      "partner": "q-dylan",
+      "members": [
+        "o-jess",
+        "q-dylan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 11.2,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-jess--q-eric",
+      "kind": "pair",
+      "baseline_notation": "(O-JESS/q-eric)",
+      "primary": "o-jess",
+      "partner": "q-eric",
+      "members": [
+        "o-jess",
+        "q-eric"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.36,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-jess--q-ryan",
+      "kind": "pair",
+      "baseline_notation": "(O-JESS/q-ryan)",
+      "primary": "o-jess",
+      "partner": "q-ryan",
+      "members": [
+        "o-jess",
+        "q-ryan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.76,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-jess--q-uncle_fu",
+      "kind": "pair",
+      "baseline_notation": "(O-JESS/q-uncle_fu)",
+      "primary": "o-jess",
+      "partner": "q-uncle_fu",
+      "members": [
+        "o-jess",
+        "q-uncle_fu"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 0.39,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-leah--o-dan",
+      "kind": "pair",
+      "baseline_notation": "(O-LEAH/o-dan)",
+      "primary": "o-leah",
+      "partner": "o-dan",
+      "members": [
+        "o-leah",
+        "o-dan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.33,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-leah--o-leo",
+      "kind": "pair",
+      "baseline_notation": "(O-LEAH/o-leo)",
+      "primary": "o-leah",
+      "partner": "o-leo",
+      "members": [
+        "o-leah",
+        "o-leo"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 11.61,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-leah--o-zac",
+      "kind": "pair",
+      "baseline_notation": "(O-LEAH/o-zac)",
+      "primary": "o-leah",
+      "partner": "o-zac",
+      "members": [
+        "o-leah",
+        "o-zac"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.95,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-leah--q-aiden",
+      "kind": "pair",
+      "baseline_notation": "(O-LEAH/q-aiden)",
+      "primary": "o-leah",
+      "partner": "q-aiden",
+      "members": [
+        "o-leah",
+        "q-aiden"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 8.64,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-leah--q-dylan",
+      "kind": "pair",
+      "baseline_notation": "(O-LEAH/q-dylan)",
+      "primary": "o-leah",
+      "partner": "q-dylan",
+      "members": [
+        "o-leah",
+        "q-dylan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 15.86,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-leah--q-eric",
+      "kind": "pair",
+      "baseline_notation": "(O-LEAH/q-eric)",
+      "primary": "o-leah",
+      "partner": "q-eric",
+      "members": [
+        "o-leah",
+        "q-eric"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.02,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-leah--q-ryan",
+      "kind": "pair",
+      "baseline_notation": "(O-LEAH/q-ryan)",
+      "primary": "o-leah",
+      "partner": "q-ryan",
+      "members": [
+        "o-leah",
+        "q-ryan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.41,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-leah--q-uncle_fu",
+      "kind": "pair",
+      "baseline_notation": "(O-LEAH/q-uncle_fu)",
+      "primary": "o-leah",
+      "partner": "q-uncle_fu",
+      "members": [
+        "o-leah",
+        "q-uncle_fu"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 5.04,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-leo--o-jess",
+      "kind": "pair",
+      "baseline_notation": "(O-LEO/o-jess)",
+      "primary": "o-leo",
+      "partner": "o-jess",
+      "members": [
+        "o-leo",
+        "o-jess"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.96,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-leo--o-leah",
+      "kind": "pair",
+      "baseline_notation": "(O-LEO/o-leah)",
+      "primary": "o-leo",
+      "partner": "o-leah",
+      "members": [
+        "o-leo",
+        "o-leah"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 11.61,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-leo--o-mia",
+      "kind": "pair",
+      "baseline_notation": "(O-LEO/o-mia)",
+      "primary": "o-leo",
+      "partner": "o-mia",
+      "members": [
+        "o-leo",
+        "o-mia"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.15,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-leo--o-tara",
+      "kind": "pair",
+      "baseline_notation": "(O-LEO/o-tara)",
+      "primary": "o-leo",
+      "partner": "o-tara",
+      "members": [
+        "o-leo",
+        "o-tara"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.15,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-leo--o-zoe",
+      "kind": "pair",
+      "baseline_notation": "(O-LEO/o-zoe)",
+      "primary": "o-leo",
+      "partner": "o-zoe",
+      "members": [
+        "o-leo",
+        "o-zoe"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.76,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-leo--q-ono_anna",
+      "kind": "pair",
+      "baseline_notation": "(O-LEO/q-ono_anna)",
+      "primary": "o-leo",
+      "partner": "q-ono_anna",
+      "members": [
+        "o-leo",
+        "q-ono_anna"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 13.21,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-leo--q-serena",
+      "kind": "pair",
+      "baseline_notation": "(O-LEO/q-serena)",
+      "primary": "o-leo",
+      "partner": "q-serena",
+      "members": [
+        "o-leo",
+        "q-serena"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 12.39,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-leo--q-sohee",
+      "kind": "pair",
+      "baseline_notation": "(O-LEO/q-sohee)",
+      "primary": "o-leo",
+      "partner": "q-sohee",
+      "members": [
+        "o-leo",
+        "q-sohee"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.69,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-leo--q-vivian",
+      "kind": "pair",
+      "baseline_notation": "(O-LEO/q-vivian)",
+      "primary": "o-leo",
+      "partner": "q-vivian",
+      "members": [
+        "o-leo",
+        "q-vivian"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.87,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-mia--o-dan",
+      "kind": "pair",
+      "baseline_notation": "(O-MIA/o-dan)",
+      "primary": "o-mia",
+      "partner": "o-dan",
+      "members": [
+        "o-mia",
+        "o-dan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.86,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-mia--o-leo",
+      "kind": "pair",
+      "baseline_notation": "(O-MIA/o-leo)",
+      "primary": "o-mia",
+      "partner": "o-leo",
+      "members": [
+        "o-mia",
+        "o-leo"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.15,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-mia--o-zac",
+      "kind": "pair",
+      "baseline_notation": "(O-MIA/o-zac)",
+      "primary": "o-mia",
+      "partner": "o-zac",
+      "members": [
+        "o-mia",
+        "o-zac"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.49,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-mia--q-aiden",
+      "kind": "pair",
+      "baseline_notation": "(O-MIA/q-aiden)",
+      "primary": "o-mia",
+      "partner": "q-aiden",
+      "members": [
+        "o-mia",
+        "q-aiden"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.17,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-mia--q-dylan",
+      "kind": "pair",
+      "baseline_notation": "(O-MIA/q-dylan)",
+      "primary": "o-mia",
+      "partner": "q-dylan",
+      "members": [
+        "o-mia",
+        "q-dylan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 14.4,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-mia--q-eric",
+      "kind": "pair",
+      "baseline_notation": "(O-MIA/q-eric)",
+      "primary": "o-mia",
+      "partner": "q-eric",
+      "members": [
+        "o-mia",
+        "q-eric"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.56,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-mia--q-ryan",
+      "kind": "pair",
+      "baseline_notation": "(O-MIA/q-ryan)",
+      "primary": "o-mia",
+      "partner": "q-ryan",
+      "members": [
+        "o-mia",
+        "q-ryan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.95,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-mia--q-uncle_fu",
+      "kind": "pair",
+      "baseline_notation": "(O-MIA/q-uncle_fu)",
+      "primary": "o-mia",
+      "partner": "q-uncle_fu",
+      "members": [
+        "o-mia",
+        "q-uncle_fu"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 3.58,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-tara--o-dan",
+      "kind": "pair",
+      "baseline_notation": "(O-TARA/o-dan)",
+      "primary": "o-tara",
+      "partner": "o-dan",
+      "members": [
+        "o-tara",
+        "o-dan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.86,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-tara--o-leo",
+      "kind": "pair",
+      "baseline_notation": "(O-TARA/o-leo)",
+      "primary": "o-tara",
+      "partner": "o-leo",
+      "members": [
+        "o-tara",
+        "o-leo"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.15,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-tara--o-zac",
+      "kind": "pair",
+      "baseline_notation": "(O-TARA/o-zac)",
+      "primary": "o-tara",
+      "partner": "o-zac",
+      "members": [
+        "o-tara",
+        "o-zac"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.49,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-tara--q-aiden",
+      "kind": "pair",
+      "baseline_notation": "(O-TARA/q-aiden)",
+      "primary": "o-tara",
+      "partner": "q-aiden",
+      "members": [
+        "o-tara",
+        "q-aiden"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.17,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-tara--q-dylan",
+      "kind": "pair",
+      "baseline_notation": "(O-TARA/q-dylan)",
+      "primary": "o-tara",
+      "partner": "q-dylan",
+      "members": [
+        "o-tara",
+        "q-dylan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 11.4,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-tara--q-eric",
+      "kind": "pair",
+      "baseline_notation": "(O-TARA/q-eric)",
+      "primary": "o-tara",
+      "partner": "q-eric",
+      "members": [
+        "o-tara",
+        "q-eric"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.56,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-tara--q-ryan",
+      "kind": "pair",
+      "baseline_notation": "(O-TARA/q-ryan)",
+      "primary": "o-tara",
+      "partner": "q-ryan",
+      "members": [
+        "o-tara",
+        "q-ryan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.95,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-tara--q-uncle_fu",
+      "kind": "pair",
+      "baseline_notation": "(O-TARA/q-uncle_fu)",
+      "primary": "o-tara",
+      "partner": "q-uncle_fu",
+      "members": [
+        "o-tara",
+        "q-uncle_fu"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 0.58,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-zac--o-jess",
+      "kind": "pair",
+      "baseline_notation": "(O-ZAC/o-jess)",
+      "primary": "o-zac",
+      "partner": "o-jess",
+      "members": [
+        "o-zac",
+        "o-jess"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.29,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-zac--o-leah",
+      "kind": "pair",
+      "baseline_notation": "(O-ZAC/o-leah)",
+      "primary": "o-zac",
+      "partner": "o-leah",
+      "members": [
+        "o-zac",
+        "o-leah"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.95,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-zac--o-mia",
+      "kind": "pair",
+      "baseline_notation": "(O-ZAC/o-mia)",
+      "primary": "o-zac",
+      "partner": "o-mia",
+      "members": [
+        "o-zac",
+        "o-mia"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.49,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-zac--o-tara",
+      "kind": "pair",
+      "baseline_notation": "(O-ZAC/o-tara)",
+      "primary": "o-zac",
+      "partner": "o-tara",
+      "members": [
+        "o-zac",
+        "o-tara"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.49,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-zac--o-zoe",
+      "kind": "pair",
+      "baseline_notation": "(O-ZAC/o-zoe)",
+      "primary": "o-zac",
+      "partner": "o-zoe",
+      "members": [
+        "o-zac",
+        "o-zoe"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.1,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-zac--q-ono_anna",
+      "kind": "pair",
+      "baseline_notation": "(O-ZAC/q-ono_anna)",
+      "primary": "o-zac",
+      "partner": "q-ono_anna",
+      "members": [
+        "o-zac",
+        "q-ono_anna"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 12.55,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-zac--q-serena",
+      "kind": "pair",
+      "baseline_notation": "(O-ZAC/q-serena)",
+      "primary": "o-zac",
+      "partner": "q-serena",
+      "members": [
+        "o-zac",
+        "q-serena"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 11.73,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-zac--q-sohee",
+      "kind": "pair",
+      "baseline_notation": "(O-ZAC/q-sohee)",
+      "primary": "o-zac",
+      "partner": "q-sohee",
+      "members": [
+        "o-zac",
+        "q-sohee"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.03,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-zac--q-vivian",
+      "kind": "pair",
+      "baseline_notation": "(O-ZAC/q-vivian)",
+      "primary": "o-zac",
+      "partner": "q-vivian",
+      "members": [
+        "o-zac",
+        "q-vivian"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.2,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-zoe--o-dan",
+      "kind": "pair",
+      "baseline_notation": "(O-ZOE/o-dan)",
+      "primary": "o-zoe",
+      "partner": "o-dan",
+      "members": [
+        "o-zoe",
+        "o-dan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.47,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-zoe--o-leo",
+      "kind": "pair",
+      "baseline_notation": "(O-ZOE/o-leo)",
+      "primary": "o-zoe",
+      "partner": "o-leo",
+      "members": [
+        "o-zoe",
+        "o-leo"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.76,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-zoe--o-zac",
+      "kind": "pair",
+      "baseline_notation": "(O-ZOE/o-zac)",
+      "primary": "o-zoe",
+      "partner": "o-zac",
+      "members": [
+        "o-zoe",
+        "o-zac"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.1,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-o-zoe--q-aiden",
+      "kind": "pair",
+      "baseline_notation": "(O-ZOE/q-aiden)",
+      "primary": "o-zoe",
+      "partner": "q-aiden",
+      "members": [
+        "o-zoe",
+        "q-aiden"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 3.79,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-zoe--q-dylan",
+      "kind": "pair",
+      "baseline_notation": "(O-ZOE/q-dylan)",
+      "primary": "o-zoe",
+      "partner": "q-dylan",
+      "members": [
+        "o-zoe",
+        "q-dylan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 11.01,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-zoe--q-eric",
+      "kind": "pair",
+      "baseline_notation": "(O-ZOE/q-eric)",
+      "primary": "o-zoe",
+      "partner": "q-eric",
+      "members": [
+        "o-zoe",
+        "q-eric"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.17,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-zoe--q-ryan",
+      "kind": "pair",
+      "baseline_notation": "(O-ZOE/q-ryan)",
+      "primary": "o-zoe",
+      "partner": "q-ryan",
+      "members": [
+        "o-zoe",
+        "q-ryan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.56,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-o-zoe--q-uncle_fu",
+      "kind": "pair",
+      "baseline_notation": "(O-ZOE/q-uncle_fu)",
+      "primary": "o-zoe",
+      "partner": "q-uncle_fu",
+      "members": [
+        "o-zoe",
+        "q-uncle_fu"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 0.19,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-aiden--o-jess",
+      "kind": "pair",
+      "baseline_notation": "(Q-AIDEN/o-jess)",
+      "primary": "q-aiden",
+      "partner": "o-jess",
+      "members": [
+        "q-aiden",
+        "o-jess"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 3.98,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-aiden--o-leah",
+      "kind": "pair",
+      "baseline_notation": "(Q-AIDEN/o-leah)",
+      "primary": "q-aiden",
+      "partner": "o-leah",
+      "members": [
+        "q-aiden",
+        "o-leah"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 8.64,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-aiden--o-mia",
+      "kind": "pair",
+      "baseline_notation": "(Q-AIDEN/o-mia)",
+      "primary": "q-aiden",
+      "partner": "o-mia",
+      "members": [
+        "q-aiden",
+        "o-mia"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.17,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-aiden--o-tara",
+      "kind": "pair",
+      "baseline_notation": "(Q-AIDEN/o-tara)",
+      "primary": "q-aiden",
+      "partner": "o-tara",
+      "members": [
+        "q-aiden",
+        "o-tara"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.17,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-aiden--o-zoe",
+      "kind": "pair",
+      "baseline_notation": "(Q-AIDEN/o-zoe)",
+      "primary": "q-aiden",
+      "partner": "o-zoe",
+      "members": [
+        "q-aiden",
+        "o-zoe"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 3.79,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-aiden--q-ono_anna",
+      "kind": "pair",
+      "baseline_notation": "(Q-AIDEN/q-ono_anna)",
+      "primary": "q-aiden",
+      "partner": "q-ono_anna",
+      "members": [
+        "q-aiden",
+        "q-ono_anna"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.24,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-aiden--q-serena",
+      "kind": "pair",
+      "baseline_notation": "(Q-AIDEN/q-serena)",
+      "primary": "q-aiden",
+      "partner": "q-serena",
+      "members": [
+        "q-aiden",
+        "q-serena"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.42,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-aiden--q-sohee",
+      "kind": "pair",
+      "baseline_notation": "(Q-AIDEN/q-sohee)",
+      "primary": "q-aiden",
+      "partner": "q-sohee",
+      "members": [
+        "q-aiden",
+        "q-sohee"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.71,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-aiden--q-vivian",
+      "kind": "pair",
+      "baseline_notation": "(Q-AIDEN/q-vivian)",
+      "primary": "q-aiden",
+      "partner": "q-vivian",
+      "members": [
+        "q-aiden",
+        "q-vivian"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.89,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-dylan--o-jess",
+      "kind": "pair",
+      "baseline_notation": "(Q-DYLAN/o-jess)",
+      "primary": "q-dylan",
+      "partner": "o-jess",
+      "members": [
+        "q-dylan",
+        "o-jess"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 11.2,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-dylan--o-leah",
+      "kind": "pair",
+      "baseline_notation": "(Q-DYLAN/o-leah)",
+      "primary": "q-dylan",
+      "partner": "o-leah",
+      "members": [
+        "q-dylan",
+        "o-leah"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 15.86,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-dylan--o-mia",
+      "kind": "pair",
+      "baseline_notation": "(Q-DYLAN/o-mia)",
+      "primary": "q-dylan",
+      "partner": "o-mia",
+      "members": [
+        "q-dylan",
+        "o-mia"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 14.4,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-dylan--o-tara",
+      "kind": "pair",
+      "baseline_notation": "(Q-DYLAN/o-tara)",
+      "primary": "q-dylan",
+      "partner": "o-tara",
+      "members": [
+        "q-dylan",
+        "o-tara"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 11.4,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-dylan--o-zoe",
+      "kind": "pair",
+      "baseline_notation": "(Q-DYLAN/o-zoe)",
+      "primary": "q-dylan",
+      "partner": "o-zoe",
+      "members": [
+        "q-dylan",
+        "o-zoe"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 11.01,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-dylan--q-ono_anna",
+      "kind": "pair",
+      "baseline_notation": "(Q-DYLAN/q-ono_anna)",
+      "primary": "q-dylan",
+      "partner": "q-ono_anna",
+      "members": [
+        "q-dylan",
+        "q-ono_anna"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 17.46,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-dylan--q-serena",
+      "kind": "pair",
+      "baseline_notation": "(Q-DYLAN/q-serena)",
+      "primary": "q-dylan",
+      "partner": "q-serena",
+      "members": [
+        "q-dylan",
+        "q-serena"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 16.64,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-dylan--q-sohee",
+      "kind": "pair",
+      "baseline_notation": "(Q-DYLAN/q-sohee)",
+      "primary": "q-dylan",
+      "partner": "q-sohee",
+      "members": [
+        "q-dylan",
+        "q-sohee"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 13.94,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-dylan--q-vivian",
+      "kind": "pair",
+      "baseline_notation": "(Q-DYLAN/q-vivian)",
+      "primary": "q-dylan",
+      "partner": "q-vivian",
+      "members": [
+        "q-dylan",
+        "q-vivian"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 15.12,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-eric--o-jess",
+      "kind": "pair",
+      "baseline_notation": "(Q-ERIC/o-jess)",
+      "primary": "q-eric",
+      "partner": "o-jess",
+      "members": [
+        "q-eric",
+        "o-jess"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.36,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-eric--o-leah",
+      "kind": "pair",
+      "baseline_notation": "(Q-ERIC/o-leah)",
+      "primary": "q-eric",
+      "partner": "o-leah",
+      "members": [
+        "q-eric",
+        "o-leah"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.02,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-eric--o-mia",
+      "kind": "pair",
+      "baseline_notation": "(Q-ERIC/o-mia)",
+      "primary": "q-eric",
+      "partner": "o-mia",
+      "members": [
+        "q-eric",
+        "o-mia"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.56,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-eric--o-tara",
+      "kind": "pair",
+      "baseline_notation": "(Q-ERIC/o-tara)",
+      "primary": "q-eric",
+      "partner": "o-tara",
+      "members": [
+        "q-eric",
+        "o-tara"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.56,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-eric--o-zoe",
+      "kind": "pair",
+      "baseline_notation": "(Q-ERIC/o-zoe)",
+      "primary": "q-eric",
+      "partner": "o-zoe",
+      "members": [
+        "q-eric",
+        "o-zoe"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.17,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-eric--q-ono_anna",
+      "kind": "pair",
+      "baseline_notation": "(Q-ERIC/q-ono_anna)",
+      "primary": "q-eric",
+      "partner": "q-ono_anna",
+      "members": [
+        "q-eric",
+        "q-ono_anna"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.62,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-eric--q-serena",
+      "kind": "pair",
+      "baseline_notation": "(Q-ERIC/q-serena)",
+      "primary": "q-eric",
+      "partner": "q-serena",
+      "members": [
+        "q-eric",
+        "q-serena"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.8,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-eric--q-sohee",
+      "kind": "pair",
+      "baseline_notation": "(Q-ERIC/q-sohee)",
+      "primary": "q-eric",
+      "partner": "q-sohee",
+      "members": [
+        "q-eric",
+        "q-sohee"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.1,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-eric--q-vivian",
+      "kind": "pair",
+      "baseline_notation": "(Q-ERIC/q-vivian)",
+      "primary": "q-eric",
+      "partner": "q-vivian",
+      "members": [
+        "q-eric",
+        "q-vivian"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 8.27,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-ono_anna--o-dan",
+      "kind": "pair",
+      "baseline_notation": "(Q-ONO_ANNA/o-dan)",
+      "primary": "q-ono_anna",
+      "partner": "o-dan",
+      "members": [
+        "q-ono_anna",
+        "o-dan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.93,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-ono_anna--o-leo",
+      "kind": "pair",
+      "baseline_notation": "(Q-ONO_ANNA/o-leo)",
+      "primary": "q-ono_anna",
+      "partner": "o-leo",
+      "members": [
+        "q-ono_anna",
+        "o-leo"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 13.21,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-ono_anna--o-zac",
+      "kind": "pair",
+      "baseline_notation": "(Q-ONO_ANNA/o-zac)",
+      "primary": "q-ono_anna",
+      "partner": "o-zac",
+      "members": [
+        "q-ono_anna",
+        "o-zac"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 12.55,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-ono_anna--q-aiden",
+      "kind": "pair",
+      "baseline_notation": "(Q-ONO_ANNA/q-aiden)",
+      "primary": "q-ono_anna",
+      "partner": "q-aiden",
+      "members": [
+        "q-ono_anna",
+        "q-aiden"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.24,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-ono_anna--q-dylan",
+      "kind": "pair",
+      "baseline_notation": "(Q-ONO_ANNA/q-dylan)",
+      "primary": "q-ono_anna",
+      "partner": "q-dylan",
+      "members": [
+        "q-ono_anna",
+        "q-dylan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 17.46,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-ono_anna--q-eric",
+      "kind": "pair",
+      "baseline_notation": "(Q-ONO_ANNA/q-eric)",
+      "primary": "q-ono_anna",
+      "partner": "q-eric",
+      "members": [
+        "q-ono_anna",
+        "q-eric"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.62,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-ono_anna--q-ryan",
+      "kind": "pair",
+      "baseline_notation": "(Q-ONO_ANNA/q-ryan)",
+      "primary": "q-ono_anna",
+      "partner": "q-ryan",
+      "members": [
+        "q-ono_anna",
+        "q-ryan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 8.01,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-ono_anna--q-uncle_fu",
+      "kind": "pair",
+      "baseline_notation": "(Q-ONO_ANNA/q-uncle_fu)",
+      "primary": "q-ono_anna",
+      "partner": "q-uncle_fu",
+      "members": [
+        "q-ono_anna",
+        "q-uncle_fu"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.64,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-ryan--o-jess",
+      "kind": "pair",
+      "baseline_notation": "(Q-RYAN/o-jess)",
+      "primary": "q-ryan",
+      "partner": "o-jess",
+      "members": [
+        "q-ryan",
+        "o-jess"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.76,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-ryan--o-leah",
+      "kind": "pair",
+      "baseline_notation": "(Q-RYAN/o-leah)",
+      "primary": "q-ryan",
+      "partner": "o-leah",
+      "members": [
+        "q-ryan",
+        "o-leah"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.41,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-ryan--o-mia",
+      "kind": "pair",
+      "baseline_notation": "(Q-RYAN/o-mia)",
+      "primary": "q-ryan",
+      "partner": "o-mia",
+      "members": [
+        "q-ryan",
+        "o-mia"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.95,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-ryan--o-tara",
+      "kind": "pair",
+      "baseline_notation": "(Q-RYAN/o-tara)",
+      "primary": "q-ryan",
+      "partner": "o-tara",
+      "members": [
+        "q-ryan",
+        "o-tara"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.95,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-ryan--o-zoe",
+      "kind": "pair",
+      "baseline_notation": "(Q-RYAN/o-zoe)",
+      "primary": "q-ryan",
+      "partner": "o-zoe",
+      "members": [
+        "q-ryan",
+        "o-zoe"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 1.56,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-ryan--q-ono_anna",
+      "kind": "pair",
+      "baseline_notation": "(Q-RYAN/q-ono_anna)",
+      "primary": "q-ryan",
+      "partner": "q-ono_anna",
+      "members": [
+        "q-ryan",
+        "q-ono_anna"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 8.01,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-ryan--q-serena",
+      "kind": "pair",
+      "baseline_notation": "(Q-RYAN/q-serena)",
+      "primary": "q-ryan",
+      "partner": "q-serena",
+      "members": [
+        "q-ryan",
+        "q-serena"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.2,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-ryan--q-sohee",
+      "kind": "pair",
+      "baseline_notation": "(Q-RYAN/q-sohee)",
+      "primary": "q-ryan",
+      "partner": "q-sohee",
+      "members": [
+        "q-ryan",
+        "q-sohee"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.49,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-ryan--q-vivian",
+      "kind": "pair",
+      "baseline_notation": "(Q-RYAN/q-vivian)",
+      "primary": "q-ryan",
+      "partner": "q-vivian",
+      "members": [
+        "q-ryan",
+        "q-vivian"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 5.67,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-serena--o-dan",
+      "kind": "pair",
+      "baseline_notation": "(Q-SERENA/o-dan)",
+      "primary": "q-serena",
+      "partner": "o-dan",
+      "members": [
+        "q-serena",
+        "o-dan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.11,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-serena--o-leo",
+      "kind": "pair",
+      "baseline_notation": "(Q-SERENA/o-leo)",
+      "primary": "q-serena",
+      "partner": "o-leo",
+      "members": [
+        "q-serena",
+        "o-leo"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 12.39,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-serena--o-zac",
+      "kind": "pair",
+      "baseline_notation": "(Q-SERENA/o-zac)",
+      "primary": "q-serena",
+      "partner": "o-zac",
+      "members": [
+        "q-serena",
+        "o-zac"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 11.73,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-serena--q-aiden",
+      "kind": "pair",
+      "baseline_notation": "(Q-SERENA/q-aiden)",
+      "primary": "q-serena",
+      "partner": "q-aiden",
+      "members": [
+        "q-serena",
+        "q-aiden"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.42,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-serena--q-dylan",
+      "kind": "pair",
+      "baseline_notation": "(Q-SERENA/q-dylan)",
+      "primary": "q-serena",
+      "partner": "q-dylan",
+      "members": [
+        "q-serena",
+        "q-dylan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 16.64,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-serena--q-eric",
+      "kind": "pair",
+      "baseline_notation": "(Q-SERENA/q-eric)",
+      "primary": "q-serena",
+      "partner": "q-eric",
+      "members": [
+        "q-serena",
+        "q-eric"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.8,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-serena--q-ryan",
+      "kind": "pair",
+      "baseline_notation": "(Q-SERENA/q-ryan)",
+      "primary": "q-serena",
+      "partner": "q-ryan",
+      "members": [
+        "q-serena",
+        "q-ryan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.2,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-serena--q-uncle_fu",
+      "kind": "pair",
+      "baseline_notation": "(Q-SERENA/q-uncle_fu)",
+      "primary": "q-serena",
+      "partner": "q-uncle_fu",
+      "members": [
+        "q-serena",
+        "q-uncle_fu"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 5.83,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-sohee--o-dan",
+      "kind": "pair",
+      "baseline_notation": "(Q-SOHEE/o-dan)",
+      "primary": "q-sohee",
+      "partner": "o-dan",
+      "members": [
+        "q-sohee",
+        "o-dan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.4,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-sohee--o-leo",
+      "kind": "pair",
+      "baseline_notation": "(Q-SOHEE/o-leo)",
+      "primary": "q-sohee",
+      "partner": "o-leo",
+      "members": [
+        "q-sohee",
+        "o-leo"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.69,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-sohee--o-zac",
+      "kind": "pair",
+      "baseline_notation": "(Q-SOHEE/o-zac)",
+      "primary": "q-sohee",
+      "partner": "o-zac",
+      "members": [
+        "q-sohee",
+        "o-zac"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 9.03,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-sohee--q-aiden",
+      "kind": "pair",
+      "baseline_notation": "(Q-SOHEE/q-aiden)",
+      "primary": "q-sohee",
+      "partner": "q-aiden",
+      "members": [
+        "q-sohee",
+        "q-aiden"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.71,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-sohee--q-dylan",
+      "kind": "pair",
+      "baseline_notation": "(Q-SOHEE/q-dylan)",
+      "primary": "q-sohee",
+      "partner": "q-dylan",
+      "members": [
+        "q-sohee",
+        "q-dylan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 13.94,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-sohee--q-eric",
+      "kind": "pair",
+      "baseline_notation": "(Q-SOHEE/q-eric)",
+      "primary": "q-sohee",
+      "partner": "q-eric",
+      "members": [
+        "q-sohee",
+        "q-eric"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.1,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-sohee--q-ryan",
+      "kind": "pair",
+      "baseline_notation": "(Q-SOHEE/q-ryan)",
+      "primary": "q-sohee",
+      "partner": "q-ryan",
+      "members": [
+        "q-sohee",
+        "q-ryan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.49,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-sohee--q-uncle_fu",
+      "kind": "pair",
+      "baseline_notation": "(Q-SOHEE/q-uncle_fu)",
+      "primary": "q-sohee",
+      "partner": "q-uncle_fu",
+      "members": [
+        "q-sohee",
+        "q-uncle_fu"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 3.12,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-uncle_fu--o-jess",
+      "kind": "pair",
+      "baseline_notation": "(Q-UNCLE_FU/o-jess)",
+      "primary": "q-uncle_fu",
+      "partner": "o-jess",
+      "members": [
+        "q-uncle_fu",
+        "o-jess"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 0.39,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-uncle_fu--o-leah",
+      "kind": "pair",
+      "baseline_notation": "(Q-UNCLE_FU/o-leah)",
+      "primary": "q-uncle_fu",
+      "partner": "o-leah",
+      "members": [
+        "q-uncle_fu",
+        "o-leah"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 5.04,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-uncle_fu--o-mia",
+      "kind": "pair",
+      "baseline_notation": "(Q-UNCLE_FU/o-mia)",
+      "primary": "q-uncle_fu",
+      "partner": "o-mia",
+      "members": [
+        "q-uncle_fu",
+        "o-mia"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 3.58,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-uncle_fu--o-tara",
+      "kind": "pair",
+      "baseline_notation": "(Q-UNCLE_FU/o-tara)",
+      "primary": "q-uncle_fu",
+      "partner": "o-tara",
+      "members": [
+        "q-uncle_fu",
+        "o-tara"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 0.58,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-uncle_fu--o-zoe",
+      "kind": "pair",
+      "baseline_notation": "(Q-UNCLE_FU/o-zoe)",
+      "primary": "q-uncle_fu",
+      "partner": "o-zoe",
+      "members": [
+        "q-uncle_fu",
+        "o-zoe"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 0.19,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-uncle_fu--q-ono_anna",
+      "kind": "pair",
+      "baseline_notation": "(Q-UNCLE_FU/q-ono_anna)",
+      "primary": "q-uncle_fu",
+      "partner": "q-ono_anna",
+      "members": [
+        "q-uncle_fu",
+        "q-ono_anna"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 6.64,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-uncle_fu--q-serena",
+      "kind": "pair",
+      "baseline_notation": "(Q-UNCLE_FU/q-serena)",
+      "primary": "q-uncle_fu",
+      "partner": "q-serena",
+      "members": [
+        "q-uncle_fu",
+        "q-serena"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 5.83,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-uncle_fu--q-sohee",
+      "kind": "pair",
+      "baseline_notation": "(Q-UNCLE_FU/q-sohee)",
+      "primary": "q-uncle_fu",
+      "partner": "q-sohee",
+      "members": [
+        "q-uncle_fu",
+        "q-sohee"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 3.12,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-uncle_fu--q-vivian",
+      "kind": "pair",
+      "baseline_notation": "(Q-UNCLE_FU/q-vivian)",
+      "primary": "q-uncle_fu",
+      "partner": "q-vivian",
+      "members": [
+        "q-uncle_fu",
+        "q-vivian"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.3,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-vivian--o-dan",
+      "kind": "pair",
+      "baseline_notation": "(Q-VIVIAN/o-dan)",
+      "primary": "q-vivian",
+      "partner": "o-dan",
+      "members": [
+        "q-vivian",
+        "o-dan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 5.58,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-vivian--o-leo",
+      "kind": "pair",
+      "baseline_notation": "(Q-VIVIAN/o-leo)",
+      "primary": "q-vivian",
+      "partner": "o-leo",
+      "members": [
+        "q-vivian",
+        "o-leo"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.87,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-vivian--o-zac",
+      "kind": "pair",
+      "baseline_notation": "(Q-VIVIAN/o-zac)",
+      "primary": "q-vivian",
+      "partner": "o-zac",
+      "members": [
+        "q-vivian",
+        "o-zac"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 10.2,
+      "origin": "cross-endpoint"
+    },
+    {
+      "id": "pair-q-vivian--q-aiden",
+      "kind": "pair",
+      "baseline_notation": "(Q-VIVIAN/q-aiden)",
+      "primary": "q-vivian",
+      "partner": "q-aiden",
+      "members": [
+        "q-vivian",
+        "q-aiden"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 7.89,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-vivian--q-dylan",
+      "kind": "pair",
+      "baseline_notation": "(Q-VIVIAN/q-dylan)",
+      "primary": "q-vivian",
+      "partner": "q-dylan",
+      "members": [
+        "q-vivian",
+        "q-dylan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 15.12,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-vivian--q-eric",
+      "kind": "pair",
+      "baseline_notation": "(Q-VIVIAN/q-eric)",
+      "primary": "q-vivian",
+      "partner": "q-eric",
+      "members": [
+        "q-vivian",
+        "q-eric"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 8.27,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-vivian--q-ryan",
+      "kind": "pair",
+      "baseline_notation": "(Q-VIVIAN/q-ryan)",
+      "primary": "q-vivian",
+      "partner": "q-ryan",
+      "members": [
+        "q-vivian",
+        "q-ryan"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 5.67,
+      "origin": "same-endpoint"
+    },
+    {
+      "id": "pair-q-vivian--q-uncle_fu",
+      "kind": "pair",
+      "baseline_notation": "(Q-VIVIAN/q-uncle_fu)",
+      "primary": "q-vivian",
+      "partner": "q-uncle_fu",
+      "members": [
+        "q-vivian",
+        "q-uncle_fu"
+      ],
+      "weights_percent": [
+        70,
+        30
+      ],
+      "trial_weights_percent": [
+        60,
+        40
+      ],
+      "source_pitch_gap_semitones": 4.3,
+      "origin": "same-endpoint"
+    }
+  ],
+  "recipes": [
+    {
+      "id": "ryan-single",
+      "source_slots": [
+        "q-ryan",
+        0,
+        0,
+        0
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": null,
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "(Q-RYAN/0)/0/0/0 | 0/0/0"
+    },
+    {
+      "id": "tara-single",
+      "source_slots": [
+        "o-tara",
+        0,
+        0,
+        0
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": null,
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "(O-TARA/0)/0/0/0 | 0/0/0"
+    },
+    {
+      "id": "ryan-leah-70-30",
+      "source_slots": [
+        "pair-q-ryan--o-leah",
+        0,
+        0,
+        0
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": null,
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "(Q-RYAN/o-leah)/0/0/0 | 0/0/0"
+    },
+    {
+      "id": "tara-aiden-70-30",
+      "source_slots": [
+        "pair-o-tara--q-aiden",
+        0,
+        0,
+        0
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": null,
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "(O-TARA/q-aiden)/0/0/0 | 0/0/0"
+    },
+    {
+      "id": "ryan-leah-60-40",
+      "source_slots": [
+        "pair-q-ryan--o-leah",
+        0,
+        0,
+        0
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": [
+        60,
+        40
+      ],
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "(Q-RYAN/o-leah)/0/0/0 | 0/0/0"
+    },
+    {
+      "id": "tara-aiden-60-40",
+      "source_slots": [
+        "pair-o-tara--q-aiden",
+        0,
+        0,
+        0
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": [
+        60,
+        40
+      ],
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "(O-TARA/q-aiden)/0/0/0 | 0/0/0"
+    },
+    {
+      "id": "pair-slot-1",
+      "source_slots": [
+        "pair-q-ryan--o-leah",
+        "q-eric",
+        "o-zac",
+        "q-ryan"
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": null,
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "(Q-RYAN/o-leah)/Q-ERIC/O-ZAC/Q-RYAN | 0/0/0"
+    },
+    {
+      "id": "pair-slot-2",
+      "source_slots": [
+        "q-aiden",
+        "pair-q-ryan--o-leah",
+        "o-zac",
+        "q-ryan"
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": null,
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "Q-AIDEN/(Q-RYAN/o-leah)/O-ZAC/Q-RYAN | 0/0/0"
+    },
+    {
+      "id": "pair-slot-3",
+      "source_slots": [
+        "q-aiden",
+        "q-eric",
+        "pair-q-ryan--o-leah",
+        "q-ryan"
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": null,
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "Q-AIDEN/Q-ERIC/(Q-RYAN/o-leah)/Q-RYAN | 0/0/0"
+    },
+    {
+      "id": "pair-slot-4",
+      "source_slots": [
+        "q-aiden",
+        "q-eric",
+        "o-zac",
+        "pair-q-ryan--o-leah"
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": null,
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "Q-AIDEN/Q-ERIC/O-ZAC/(Q-RYAN/o-leah) | 0/0/0"
+    },
+    {
+      "id": "four-singles",
+      "source_slots": [
+        "q-aiden",
+        "q-eric",
+        "o-zac",
+        "q-ryan"
+      ],
+      "slot_weights_percent": [
+        55,
+        25,
+        15,
+        5
+      ],
+      "pair_trial_percent": null,
+      "overlays": {
+        "emotion": 0,
+        "presence": 0,
+        "age": 0
+      },
+      "notation": "Q-AIDEN/Q-ERIC/O-ZAC/Q-RYAN | 0/0/0"
+    }
+  ],
+  "probe": "The west gate is shut. Check the dial and wait for the second bell. Did you hear it? Keep the channel open."
+}

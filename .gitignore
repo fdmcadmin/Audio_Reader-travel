@@ -1,5 +1,7 @@
 .gradle/
 .kotlin/
+__pycache__/
+voice-packs/asu/qwen-pilot-model/
 **/build/
 local.properties
 .idea/

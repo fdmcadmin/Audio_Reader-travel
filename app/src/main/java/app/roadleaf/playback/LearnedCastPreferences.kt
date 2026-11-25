@@ -14,7 +14,7 @@ class LearnedCastPreferences(context: Context) {
     val changes = revision.asStateFlow()
     fun get(book: String): LearnedCast = runCatching {
         val raw = preferences.getString(book, null) ?: return LearnedCast()
-        require(raw.length <= 131072)
+        require(raw.length <= 524288)
         val json = JSONObject(raw)
         val array = json.optJSONArray("people") ?: JSONArray()
         val people = (0 until minOf(array.length(), AdaptiveCast.MAX_PEOPLE)).map { index ->
