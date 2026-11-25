@@ -2,10 +2,6 @@
 
 All notable changes to Roadleaf. Versions before 1.0 are test builds.
 
-## 0.3.46
-
-- Download or import 30 weighted Supertonic 3 voices from Voice → Narrator. Roadleaf prepares the voices on the phone from its installed stock styles.
-
 ## 0.3.45
 
 - Choose Roadleaf Native for offline English narration and character voices using Roadleaf's original experimental formant synthesizer. It is available immediately on installation.

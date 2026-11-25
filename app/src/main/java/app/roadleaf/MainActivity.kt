@@ -88,7 +88,6 @@ class MainActivity : ComponentActivity() {
         val supertonicBusy by vm.supertonicBusy.collectAsStateWithLifecycle()
         val supertonicPackaged = remember { SupertonicModelInstall.packaged(this@MainActivity) }
         val supertonicInstalled by vm.supertonicInstalled.collectAsStateWithLifecycle()
-        val weightedPack by vm.weightedPack.collectAsStateWithLifecycle()
         var voiceRequest by remember { mutableIntStateOf(0) }
         var browserAction by remember { mutableStateOf<SourceAction.Browser?>(null) }
         var bookToDelete by remember { mutableStateOf<Book?>(null) }
@@ -123,12 +122,6 @@ class MainActivity : ComponentActivity() {
         val learnedRevision by vm.app.learnedCasts.changes.collectAsStateWithLifecycle()
         val castBooks = books.map { CastBookChoice(it.id, it.title) } + webBooks.filter { WebBookLinks.resolve(it.chapterUrl)?.readable == true }.map { CastBookChoice(it.bookUrl, it.title, it.chapterUrl) }
         val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::import) }
-        val weightedVoiceImporter = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {
-            uri -> if (uri != null) vm.installWeightedVoices(uri)
-        }
-        val supertonicModelImporter = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {
-            uri -> if (uri != null) vm.installSupertonic(uri)
-        }
         val expeditionFolderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let(vm::linkExpedition) }
         fun openBrowser(url: String) { runCatching { startActivity(Intent(Intent.ACTION_VIEW, url.toUri())); vm.rememberWebsite(url) }.onFailure { vm.message.value = "No browser is available." } }
         fun openWebBook(url: String, resume: Boolean = false) {
@@ -482,10 +475,6 @@ class MainActivity : ComponentActivity() {
                             kokoroInstalled = NativeKokoro.installed(this@MainActivity), kokoroImportBusy = kokoroImportBusy,
                             supertonicOffered = supertonicPackaged || supertonicInstalled, supertonicInstalled = supertonicInstalled,
                             supertonicBusy = supertonicBusy, onSupertonicTerms = { openLink(SupertonicModelInstall.TERMS) },
-                            weightedVoiceCount = weightedPack?.recipes.orEmpty().size, weightedVoiceRevision = weightedPack?.digest,
-                            onDownloadWeightedVoices = { vm.installWeightedVoices() },
-                            onImportWeightedVoices = { weightedVoiceImporter.launch(arrayOf("*/*")) },
-                            onImportSupertonic = { supertonicModelImporter.launch(arrayOf("*/*")) },
                             onInstallSupertonic = { vm.installSupertonic() }) }
                         if (voiceSection == 1) item {
                             val cast = remember(castBook, castRevision) { vm.app.casts.get(castBook) }
@@ -559,7 +548,7 @@ class MainActivity : ComponentActivity() {
         }) { Text("Delete book") } }, dismissButton = { TextButton(onClick = { bookToDelete = null }) { Text("Keep book") } }) }
         if (showVoiceSources) VoiceSourcesDialog(voiceCatalog?.let { c -> c.engines.firstOrNull { it.packageName == c.enginePackage }?.label } ?: "your speech app", onEngineVoices = ::engineVoices, onOpen = ::openLink) { showVoiceSources = false }
         castImport?.let { pending ->
-            val pack = remember(pending, settings.enginePackage, settings.localeTag, supertonicInstalled, weightedPack?.digest) {
+            val pack = remember(pending, settings.enginePackage, settings.localeTag, supertonicInstalled) {
                 fun matching(voices: List<OfflineVoiceOption>) =
                     voices.filter { it.localeTag.equals(settings.localeTag, true) }.map { it.name }
                 val native = BuiltInCastPack(RoadleafNativeSpeech.ENGINE_ID, "Roadleaf Native",

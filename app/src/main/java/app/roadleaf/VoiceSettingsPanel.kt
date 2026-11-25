@@ -102,17 +102,11 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
     supertonicInstalled: Boolean = false,
     supertonicBusy: Boolean = false,
     onInstallSupertonic: () -> Unit = {},
-    onImportSupertonic: () -> Unit = {},
-    weightedVoiceCount: Int = 0,
-    weightedVoiceRevision: String? = null,
-    onDownloadWeightedVoices: () -> Unit = {},
-    onImportWeightedVoices: () -> Unit = {},
     onSupertonicTerms: () -> Unit = {}
 ) {
     var draft by remember(settings) { mutableStateOf(settings) }
     var previewText by remember { mutableStateOf("The road unfolds before us. A new chapter begins, with dragons beyond the horizon.") }
     var showModelTerms by remember { mutableStateOf(false) }
-    var importModel by remember { mutableStateOf(false) }
     var editRecipe by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val roadleaf = draft.enginePackage == RoadleafNativeSpeech.ENGINE_ID
@@ -122,7 +116,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
         NativeKokoro.ENGINE_ID -> kokoroInstalled
         else -> true
     }
-    LaunchedEffect(nativeSupertonic, supertonicInstalled, canControl, weightedVoiceRevision) {
+    LaunchedEffect(nativeSupertonic, supertonicInstalled, canControl) {
         if (nativeSupertonic && supertonicInstalled && canControl) onRefresh(NativeSupertonic.ENGINE_ID)
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -149,18 +143,10 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
         if (nativeSupertonic) {
             Text(if (ready) "Supertonic 3 is ready for offline playback."
                 else "Download the 129 MB model once. Roadleaf reads with it offline after setup.", style = MaterialTheme.typography.bodySmall)
-            if (!ready) {
-                OutlinedButton(onClick = { importModel = false; showModelTerms = true }, enabled = !supertonicBusy, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (supertonicBusy) "Preparing Supertonic 3…" else "Set up Supertonic 3")
-                }
-                TextButton(onClick = { importModel = true; showModelTerms = true }, enabled = !supertonicBusy) { Text("Import Supertonic model archive") }
+            if (!ready) OutlinedButton(onClick = { showModelTerms = true }, enabled = !supertonicBusy, modifier = Modifier.fillMaxWidth()) {
+                Text(if (supertonicBusy) "Downloading Supertonic 3…" else "Set up Supertonic 3")
             }
             TextButton(onClick = onSupertonicTerms) { Text("Supertonic 3 model terms") }
-            if (weightedVoiceCount > 0) Text("$weightedVoiceCount weighted voices installed.", style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(onClick = onDownloadWeightedVoices, enabled = !supertonicBusy, modifier = Modifier.fillMaxWidth()) {
-                Text(if (weightedVoiceCount == 0) "Download 30 weighted voices" else "Download official pack again")
-            }
-            TextButton(onClick = onImportWeightedVoices, enabled = !supertonicBusy) { Text("Import weighted voice pack") }
         }
         if (roadleaf) Text("English formant speech generated on this device.", style = MaterialTheme.typography.bodySmall)
         val catalogMatches = catalog != null && (draft.enginePackage.isBlank() || catalog.enginePackage == draft.enginePackage)
@@ -228,19 +214,13 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
                 TextButton(onClick = onSupertonicTerms) { Text("Read model license") }
             }
         },
-        confirmButton = {
-            TextButton(onClick = {
-                showModelTerms = false
-                if (importModel) onImportSupertonic() else onInstallSupertonic()
-            }) { Text(if (importModel) "Agree and choose archive" else "Agree and download") }
-        },
+        confirmButton = { TextButton(onClick = { showModelTerms = false; onInstallSupertonic() }) { Text("Agree and download") } },
         dismissButton = { TextButton(onClick = { showModelTerms = false }) { Text("Cancel") } }
     )
 }
 
 internal fun voiceLabel(name: String, engine: String): String {
     RoadleafNativeSpeech.label(name)?.let { return it }
-    SupertonicWeightedPack.label(name)?.let { return "Weighted · $it" }
     SupertonicStep3Pack.name(name)?.let { return "Roadleaf Step 3 · $it" }
     SupertonicVoiceIndex.label(name)?.let { return "Supertonic 3 · $it" }
     HayaiVoices.libriTts(name, engine)?.let { voice ->
