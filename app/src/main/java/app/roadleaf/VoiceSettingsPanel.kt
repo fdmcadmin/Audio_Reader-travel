@@ -102,6 +102,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
     supertonicInstalled: Boolean = false,
     supertonicBusy: Boolean = false,
     onInstallSupertonic: () -> Unit = {},
+    onImportSupertonic: () -> Unit = {},
     weightedVoiceCount: Int = 0,
     weightedVoiceRevision: String? = null,
     onDownloadWeightedVoices: () -> Unit = {},
@@ -111,6 +112,7 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
     var draft by remember(settings) { mutableStateOf(settings) }
     var previewText by remember { mutableStateOf("The road unfolds before us. A new chapter begins, with dragons beyond the horizon.") }
     var showModelTerms by remember { mutableStateOf(false) }
+    var importModel by remember { mutableStateOf(false) }
     var editRecipe by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val roadleaf = draft.enginePackage == RoadleafNativeSpeech.ENGINE_ID
@@ -147,8 +149,11 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
         if (nativeSupertonic) {
             Text(if (ready) "Supertonic 3 is ready for offline playback."
                 else "Download the 129 MB model once. Roadleaf reads with it offline after setup.", style = MaterialTheme.typography.bodySmall)
-            if (!ready) OutlinedButton(onClick = { showModelTerms = true }, enabled = !supertonicBusy, modifier = Modifier.fillMaxWidth()) {
-                Text(if (supertonicBusy) "Downloading Supertonic 3…" else "Set up Supertonic 3")
+            if (!ready) {
+                OutlinedButton(onClick = { importModel = false; showModelTerms = true }, enabled = !supertonicBusy, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (supertonicBusy) "Preparing Supertonic 3…" else "Set up Supertonic 3")
+                }
+                TextButton(onClick = { importModel = true; showModelTerms = true }, enabled = !supertonicBusy) { Text("Import Supertonic model archive") }
             }
             TextButton(onClick = onSupertonicTerms) { Text("Supertonic 3 model terms") }
             if (weightedVoiceCount > 0) Text("$weightedVoiceCount weighted voices installed.", style = MaterialTheme.typography.bodySmall)
@@ -223,7 +228,12 @@ internal fun voiceChoice(voice: OfflineVoiceOption, engine: String, detail: Stri
                 TextButton(onClick = onSupertonicTerms) { Text("Read model license") }
             }
         },
-        confirmButton = { TextButton(onClick = { showModelTerms = false; onInstallSupertonic() }) { Text("Agree and download") } },
+        confirmButton = {
+            TextButton(onClick = {
+                showModelTerms = false
+                if (importModel) onImportSupertonic() else onInstallSupertonic()
+            }) { Text(if (importModel) "Agree and choose archive" else "Agree and download") }
+        },
         dismissButton = { TextButton(onClick = { showModelTerms = false }) { Text("Cancel") } }
     )
 }

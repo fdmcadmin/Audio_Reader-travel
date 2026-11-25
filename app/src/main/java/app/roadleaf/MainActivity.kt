@@ -126,6 +126,9 @@ class MainActivity : ComponentActivity() {
         val weightedVoiceImporter = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {
             uri -> if (uri != null) vm.installWeightedVoices(uri)
         }
+        val supertonicModelImporter = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {
+            uri -> if (uri != null) vm.installSupertonic(uri)
+        }
         val expeditionFolderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let(vm::linkExpedition) }
         fun openBrowser(url: String) { runCatching { startActivity(Intent(Intent.ACTION_VIEW, url.toUri())); vm.rememberWebsite(url) }.onFailure { vm.message.value = "No browser is available." } }
         fun openWebBook(url: String, resume: Boolean = false) {
@@ -482,6 +485,7 @@ class MainActivity : ComponentActivity() {
                             weightedVoiceCount = weightedPack?.recipes.orEmpty().size, weightedVoiceRevision = weightedPack?.digest,
                             onDownloadWeightedVoices = { vm.installWeightedVoices() },
                             onImportWeightedVoices = { weightedVoiceImporter.launch(arrayOf("*/*")) },
+                            onImportSupertonic = { supertonicModelImporter.launch(arrayOf("*/*")) },
                             onInstallSupertonic = { vm.installSupertonic() }) }
                         if (voiceSection == 1) item {
                             val cast = remember(castBook, castRevision) { vm.app.casts.get(castBook) }

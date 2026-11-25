@@ -1,6 +1,7 @@
 package app.roadleaf.playback
 
 import android.content.Context
+import android.net.Uri
 import app.roadleaf.sources.SafeHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -45,7 +46,7 @@ internal object SupertonicModelInstall {
             File(folder, "voice.bin").length() in setOf(SupertonicVoiceIndex.tableSize(120), SupertonicVoiceIndex.tableSize(170)) &&
             packedFiles.all { File(folder, it).isFile && File(folder, it).length() > 0 }
 
-    suspend fun install(context: Context): Int = lock.withLock {
+    suspend fun install(context: Context, source: Uri? = null): Int = lock.withLock {
         withContext(Dispatchers.IO) {
             val target = folder(context)
             if (complete(target)) return@withContext SupertonicVoiceIndex.read(target).size
@@ -58,8 +59,23 @@ internal object SupertonicModelInstall {
                 val download = File(stage, "model.tar.bz2")
                 val digest = MessageDigest.getInstance("SHA-256")
                 DigestOutputStream(download.outputStream().buffered(), digest).use { output ->
-                    SafeHttp.copyTo(URL, BYTES, output) { uri ->
-                        uri.scheme == "https" && uri.host in hosts && uri.userInfo == null && uri.port in listOf(-1, 443)
+                    if (source == null) {
+                        SafeHttp.copyTo(URL, BYTES, output) { uri ->
+                            uri.scheme == "https" && uri.host in hosts && uri.userInfo == null && uri.port in listOf(-1, 443)
+                        }
+                    } else {
+                        requireNotNull(context.contentResolver.openInputStream(source)) { "The model archive could not be opened." }.use { input ->
+                            val buffer = ByteArray(65_536)
+                            var total = 0L
+                            while (true) {
+                                currentCoroutineContext().ensureActive()
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                total += count
+                                require(total <= BYTES) { "The Supertonic archive is larger than expected." }
+                                output.write(buffer, 0, count)
+                            }
+                        }
                     }
                 }
                 require(download.length() == BYTES.toLong() && digest.digest().joinToString("") { "%02x".format(it) } == SHA256) {

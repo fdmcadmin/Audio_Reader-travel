@@ -44,11 +44,11 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     fun rememberWebsite(url: String) { viewModelScope.launch { runCatching { app.websites.remember(url) }.onFailure { message.value = "Could not save this website shortcut." } } }
     fun forgetWebsite(bookUrl: String) = task { app.websites.forget(bookUrl); message.value = "Quick pick removed" }
     fun saveSettings(settings: ListeningSettings) { app.listening.save(settings) }
-    fun installSupertonic() = viewModelScope.launch {
+    fun installSupertonic(uri: Uri? = null) = viewModelScope.launch {
         if (supertonicReady.value || !supertonicDownloading.compareAndSet(false, true)) return@launch
-        message.value = "Downloading the Supertonic 3 model…"
+        message.value = if (uri == null) "Downloading the Supertonic 3 model…" else "Importing the Supertonic 3 model…"
         try {
-            val count = SupertonicModelInstall.install(app)
+            val count = SupertonicModelInstall.install(app, uri)
             supertonicReady.value = true
             message.value = "$count Supertonic 3 voices are ready for offline playback."
         } catch (cancelled: CancellationException) {
